@@ -1,24 +1,61 @@
+// https://www.opengl.org/sdk/docs/tutorials/ClockworkCoders/loading.php
+// https://www.geeksforgeeks.org/multithreading-c-2/
+
+// http://www.science.smith.edu/dftwiki/index.php/Tutorial:_Playing_Sounds_in_a_Separate_Thread
+
+// https://computing.llnl.gov/tutorials/pthreads/#PassingArguments
 
 #define STB_DEFINE
 
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <time.h>
+#include <pthread.h>
+
 #include <ao/ao.h>
+
 #include <stb/stb.h>
-
-static void error_callback(int error, const char *description) {
-  fputs(description, stderr);
-}
-
-static void key_callback(GLFWwindow *window, int key, int scancode, int action,
-                         int mods) {
-  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-    glfwSetWindowShouldClose(window, GL_TRUE);
-}
 
 #define SAMPLE_FREQUENCY 44100
 #define FRAME_RATE 60
 
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+
+const char *vertexShaderSource =
+    "#version 330 core\n"
+    "layout (location = 0) in vec3 aPos;\n"
+    "void main()\n"
+    "{\n"
+    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "}\0";
+
+const char *fragmentShaderSource =
+    "#version 330 core\n"
+    "out vec4 FragColor;\n"
+    "void main()\n"
+    "{\n"
+    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "}\n\0";
+
+void *PlaySound(void *threadid) {
+
+}
+
+void processInput(GLFWwindow *window) {
+  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    glfwSetWindowShouldClose(window, 1);
+}
+
+// glfw: whenever the window size changed (by OS or user resize) this callback
+// function executes
+// ---------------------------------------------------------------------------------------------
+void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+  // make sure the viewport matches the new window dimensions; note that width
+  // and height will be significantly larger than specified on retina displays.
+  glViewport(0, 0, width, height);
+}
 int main(void) {
   ao_device *device;
   ao_sample_format format;
@@ -63,54 +100,147 @@ int main(void) {
   buffer = (char *)calloc(buf_size, sizeof(char));
 
   /* -- GL setup -- */
-  GLFWwindow *window;
-  glfwSetErrorCallback(error_callback);
 
-  if (!glfwInit())
-    exit(EXIT_FAILURE);
+  // ---
+  // glfw: initialize and configure
+  // ------------------------------
+  glfwInit();
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-  window = glfwCreateWindow(640, 480, "Ducks at the Lake", NULL, NULL);
+#ifdef __APPLE__
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
 
-  if (!window) {
+  // glfw window creation
+  // --------------------
+  GLFWwindow *window =
+      glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+  if (window == NULL) {
+    printf("Failed to make windows");
     glfwTerminate();
-    exit(EXIT_FAILURE);
+    return -1;
+  }
+  glfwMakeContextCurrent(window);
+  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+  // glad: load all OpenGL function pointers
+  // ---------------------------------------
+  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    printf("Failed to start GLAD");
+    return -1;
   }
 
+  // build and compile our shader program
+  // ------------------------------------
+  // vertex shader
+  int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+  glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+  glCompileShader(vertexShader);
+  // check for shader compile errors
+  int success;
+  char infoLog[512];
+  glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+  if (!success) {
+    glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+    printf("Failed to compile vertex shader");
+  }
+  // fragment shader
+  int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+  glCompileShader(fragmentShader);
+  // check for shader compile errors
+  glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+  if (!success) {
+    glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+    printf("Failed to compile fragment shader");
+  }
+  // link shaders
+  int shaderProgram = glCreateProgram();
+  glAttachShader(shaderProgram, vertexShader);
+  glAttachShader(shaderProgram, fragmentShader);
+  glLinkProgram(shaderProgram);
+  // check for linking errors
+  glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+  if (!success) {
+    glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+    printf("Failed to link fragment shader");
+  }
+  glDeleteShader(vertexShader);
+  glDeleteShader(fragmentShader);
+
+  // set up vertex data (and buffer(s)) and configure vertex attributes
+  // ------------------------------------------------------------------
+  float vertices[] = {
+      -0.5f, -0.5f, 0.0f, // left
+      0.5f,  -0.5f, 0.0f, // right
+      0.0f,  0.5f,  0.0f  // top
+  };
+
+  unsigned int VBO, VAO;
+  glGenVertexArrays(1, &VAO);
+  glGenBuffers(1, &VBO);
+  // bind the Vertex Array Object first, then bind and set vertex buffer(s), and
+  // then configure vertex attributes(s).
+  glBindVertexArray(VAO);
+
+  glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+  glEnableVertexAttribArray(0);
+
+  // note that this is allowed, the call to glVertexAttribPointer registered VBO
+  // as the vertex attribute's bound vertex buffer object so afterwards we can
+  // safely unbind
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  // You can unbind the VAO afterwards so other VAO calls won't accidentally
+  // modify this VAO, but this rarely happens. Modifying other VAOs requires a
+  // call to glBindVertexArray anyways so we generally don't unbind VAOs (nor
+  // VBOs) when it's not directly necessary.
+  glBindVertexArray(0);
+  // ---
+
   glfwMakeContextCurrent(window);
-  glfwSetKeyCallback(window, key_callback);
+  // glfwSetKeyCallback(window, key_callback);
 
   while (!glfwWindowShouldClose(window)) {
-    float ratio;
-    int width, height;
+    struct timeval draw_start, draw_stop;
+    struct timeval audio_start, audio_stop;
+    double draw_secs = 0;
+    double audio_secs = 0;
 
-    glfwGetFramebufferSize(window, &width, &height);
 
-    ratio = width / (float)height;
+    // input
+    // -----
+    processInput(window);
 
-    glViewport(0, 0, width, height);
+    // render
+    // ------
+    gettimeofday(&draw_start, NULL);
+
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
 
-    glOrtho(-ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    // draw our first triangle
+    glUseProgram(shaderProgram);
+    glBindVertexArray(
+        VAO); // seeing as we only have a single VAO there's no need to bind it
+              // every time, but we'll do so to keep things a bit more organized
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    // glBindVertexArray(0); // no need to unbind it every time
 
-    glRotatef((float)glfwGetTime() * 50.f, 2.f, 0.f, 1.f);
+    // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved
+    // etc.)
+    // -------------------------------------------------------------------------------
 
-    glBegin(GL_TRIANGLES);
-    glColor3f(1.f, 0.f, 0.f);
-    glVertex3f(-0.6f, -0.4f, 0.f);
-    glColor3f(0.f, 1.f, 0.f);
-    glVertex3f(0.6f, -0.4f, 0.f);
-    glColor3f(0.f, 0.f, 1.f);
-    glVertex3f(0.f, 0.6f, 0.f);
+    gettimeofday(&draw_stop, NULL);
 
-    glEnd();
 
-    glfwSwapBuffers(window);
-    glfwPollEvents();
 
+    gettimeofday(&audio_start, NULL);
     // Render audio
     for (int i = 0; i < buffer_samples; i++) {
       sample1 =
@@ -130,8 +260,23 @@ int main(void) {
       sample_counter++;
     }
 
+    gettimeofday(&audio_stop, NULL);
+
+
     ao_play(device, buffer, buf_size);
+
+
+    draw_secs = (double)(draw_stop.tv_usec - draw_start.tv_usec) / 1000000 + (double)(draw_stop.tv_sec - draw_start.tv_sec);
+
+    audio_secs = (double)(audio_stop.tv_usec - audio_start.tv_usec) / 1000000 + (double)(audio_stop.tv_sec - audio_start.tv_sec);
+    printf("draw %f | audio %f\n",draw_secs*1000, audio_secs*1000);
+
+
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+
   }
+
   // shutdown audio
   ao_close(device);
   ao_shutdown();

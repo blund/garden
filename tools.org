@@ -1,0 +1,3 @@
+- perf
+
+Statisk analyse - ser på hele koden og finner feil i kodestider
