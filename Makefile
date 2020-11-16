@@ -1,11 +1,11 @@
 # instal glut
 
 all: main.c
-	tcc main.c glad.c -o main \
+	tcc -v main.c glad.c helpers.c -o main \
 		-Iinclude/ -lGL -lGLU \
 		-lglfw -lX11 -lXxf86vm \
 		-lXrandr -lpthread -lXi \
-		-lao -lm
+		-lao -lm -ldl
 
 run: all
 	./main

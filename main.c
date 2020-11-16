@@ -5,43 +5,27 @@
 
 // https://computing.llnl.gov/tutorials/pthreads/#PassingArguments
 
-#define STB_DEFINE
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include <time.h>
+#include <math.h>
 #include <pthread.h>
 
-#include <ao/ao.h>
+// #include <ao/ao.h>
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_NO_SIMD //@Ytelse: Siden vi bruker tcc nå kan vi ikke gjøre simd-operasjoner. Dette må fjernes når vi skal kompilere for at ting faktisk skal kjøre kjapt, som med gcc eller lignende.
 
-#include <stb/stb.h>
+#include <stb/stb_image.h>
 
 #define SAMPLE_FREQUENCY 44100
 #define FRAME_RATE 60
 
+char *loadFile(char *file_name);
+
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-const char *vertexShaderSource =
-    "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "}\0";
-
-const char *fragmentShaderSource =
-    "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-    "}\n\0";
-
-void *PlaySound(void *threadid) {
-
-}
 
 void processInput(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -57,6 +41,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
 }
 int main(void) {
+  /*
   ao_device *device;
   ao_sample_format format;
   int default_driver;
@@ -74,7 +59,7 @@ int main(void) {
   float freq1 = 440.0;
   float freq2 = 733.0;
 
-  /* -- Setup for default driver -- */
+  // -- Setup for default driver --
   ao_initialize();
   default_driver = ao_default_driver_id();
   default_driver = ao_default_driver_id();
@@ -85,7 +70,8 @@ int main(void) {
   format.rate = 44100;
   format.byte_format = AO_FMT_LITTLE;
 
-  /* -- Open driver -- */
+
+   -- Open driver -- 
   ao_option *ao_options = NULL;
 
   device = ao_open_live(default_driver, &format, ao_options);
@@ -93,12 +79,13 @@ int main(void) {
     fprintf(stderr, "Error opening device.\n");
     return 1;
   }
-
+  */
+  /*
   //  Play some stuff
   //  buf_size = format.bits / 8 * format.channels * format.rate/8;
   buf_size = format.bits / 8 * format.channels * buffer_samples;
   buffer = (char *)calloc(buf_size, sizeof(char));
-
+  */
   /* -- GL setup -- */
 
   // ---
@@ -134,9 +121,11 @@ int main(void) {
 
   // build and compile our shader program
   // ------------------------------------
-  // vertex shader
+  // Last inn og kompiler vertex-shader-program
   int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+  char vertex_shader_file_name[] = "shader.vs";
+  char *vertex_shader_source = loadFile(vertex_shader_file_name);
+  glShaderSource(vertexShader, 1, &vertex_shader_source, NULL);
   glCompileShader(vertexShader);
   // check for shader compile errors
   int success;
@@ -145,18 +134,30 @@ int main(void) {
   if (!success) {
     glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
     printf("Failed to compile vertex shader");
+    printf("%s", infoLog);
+    return 1;
   }
-  // fragment shader
+
+
+
+  // Last inn og kompiler fragment-shader-program
   int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+  char fragment_shader_file_name[] = "shader.fs";
+  char *fragment_shader_source = loadFile(fragment_shader_file_name);
+  glShaderSource(fragmentShader, 1, &fragment_shader_source, NULL);
   glCompileShader(fragmentShader);
   // check for shader compile errors
   glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
   if (!success) {
     glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
     printf("Failed to compile fragment shader");
+    printf("%s", infoLog);
+    return 1;
   }
-  // link shaders
+
+
+
+  // Link shadere til et shader objekt, og slett shaderene
   int shaderProgram = glCreateProgram();
   glAttachShader(shaderProgram, vertexShader);
   glAttachShader(shaderProgram, fragmentShader);
@@ -166,30 +167,95 @@ int main(void) {
   if (!success) {
     glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
     printf("Failed to link fragment shader");
+    printf("%s", infoLog);
   }
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
 
+
+
+
+
   // set up vertex data (and buffer(s)) and configure vertex attributes
   // ------------------------------------------------------------------
-  float vertices[] = {
-      -0.5f, -0.5f, 0.0f, // left
-      0.5f,  -0.5f, 0.0f, // right
-      0.0f,  0.5f,  0.0f  // top
+  float punkt_verdier[] = {
+    // venstre nede
+    -0.5f, -0.5f, 0.0f, // koordinat
+    1.0f, 0.0f, 0.0f,   // farge
+    0.0f, 0.0f,         // tekstur-koordinat
+
+    // høyre nede
+    0.5f,  -0.5f, 0.0f,
+    0.0f, 1.0f, 0.0f,
+    1.0f, 0.0f,  
+
+    // venstre oppe
+    -0.5f,  0.5f,  0.0f,
+    0.0f, 0.0f, 1.0f,
+    0.0f, 1.0f,
+
+     // høyre oppe
+    0.5f,  0.5f, 0.0f,
+    0.0f, 1.0f, 0.0f,
+    1.0f, 1.0f,  
+
+ };
+  unsigned int indekser[] = {
+    0, 1, 2, // første trekant
+    1, 2, 3,
   };
 
-  unsigned int VBO, VAO;
+  float trekk_koordinater[] = {
+    0.0f, 0.0f,
+    0.0f, 1.0f,
+    1.0f, 0.0f,
+    1.0f, 1.0f,
+  };
+
+
+  unsigned int texture;
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+  int width, height, nrChannels;
+  unsigned char *data = stbi_load("ressurser/wall.jpg", &width, &height, &nrChannels, 0);
+  if (data) {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+  } else {
+    printf("Klarte ikke å laste inn bildet!");
+  }
+
+
+  stbi_image_free(data);
+
+  
+  unsigned int VBO, VAO, EBO;
   glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
-  // bind the Vertex Array Object first, then bind and set vertex buffer(s), and
-  // then configure vertex attributes(s).
+  glGenBuffers(1, &EBO);
+
   glBindVertexArray(VAO);
 
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(punkt_verdier), punkt_verdier, GL_STATIC_DRAW);
 
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indekser), indekser, GL_STATIC_DRAW);
+  
+  // Her forklarer vi verdiene til delene av punkt_verdier. Dette innebærer posisjonen til denne attributten, hvor mange elementer den har, hvilke typer den består av, hvor mange som er i totalt og hvor stor offset fra begynnelsen denne attributten har.
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
   glEnableVertexAttribArray(0);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3*sizeof(float)));
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6*sizeof(float)));
+  glEnableVertexAttribArray(2);
 
   // note that this is allowed, the call to glVertexAttribPointer registered VBO
   // as the vertex attribute's bound vertex buffer object so afterwards we can
@@ -208,9 +274,9 @@ int main(void) {
 
   while (!glfwWindowShouldClose(window)) {
     struct timeval draw_start, draw_stop;
-    struct timeval audio_start, audio_stop;
+    struct timeval render_start, render_stop;
     double draw_secs = 0;
-    double audio_secs = 0;
+    double render_secs = 0;
 
 
     // input
@@ -219,28 +285,46 @@ int main(void) {
 
     // render
     // ------
-    gettimeofday(&draw_start, NULL);
+    //gettimeofday(&render_start, NULL);
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+
+    float tid = glfwGetTime();
+    float grønn_verdi = (sin(tid) / 2.0f) + 0.5f;
+    float rød_verdi = (sin(tid*2) / 2.0f) + 0.5f;
+    float blå_verdi = (sin(tid*3) / 2.0f) + 0.5f;
+
+    // int trekk_uniform = glGetUniformLocation(shaderProgram, "trekk");
+    //glUseProgram(shaderProgram);
+    //glUniform2f(vertex_farge_sted, rød_verdi, grønn_verdi, blå_verdi, 1.0f);
+    
     // draw our first triangle
     glUseProgram(shaderProgram);
     glBindVertexArray(
         VAO); // seeing as we only have a single VAO there's no need to bind it
               // every time, but we'll do so to keep things a bit more organized
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    //gettimeofday(&render_stop, NULL);
+
+    //gettimeofday(&draw_start, NULL);
+
+    gettimeofday(&render_stop, NULL);
+    //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    //glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    //gettimeofday(&draw_stop, NULL);
     // glBindVertexArray(0); // no need to unbind it every time
 
     // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved
     // etc.)
     // -------------------------------------------------------------------------------
 
-    gettimeofday(&draw_stop, NULL);
 
 
 
-    gettimeofday(&audio_start, NULL);
+    /*
     // Render audio
     for (int i = 0; i < buffer_samples; i++) {
       sample1 =
@@ -259,17 +343,16 @@ int main(void) {
 
       sample_counter++;
     }
+    */
 
-    gettimeofday(&audio_stop, NULL);
 
-
-    ao_play(device, buffer, buf_size);
+    //ao_play(device, buffer, buf_size);
 
 
     draw_secs = (double)(draw_stop.tv_usec - draw_start.tv_usec) / 1000000 + (double)(draw_stop.tv_sec - draw_start.tv_sec);
 
-    audio_secs = (double)(audio_stop.tv_usec - audio_start.tv_usec) / 1000000 + (double)(audio_stop.tv_sec - audio_start.tv_sec);
-    printf("draw %f | audio %f\n",draw_secs*1000, audio_secs*1000);
+    render_secs = (double)(render_stop.tv_usec - render_start.tv_usec) / 1000000 + (double)(render_stop.tv_sec - render_start.tv_sec);
+    //printf("render %f | draw %f\n",render_secs*1000, draw_secs*1000);
 
 
     glfwSwapBuffers(window);
@@ -278,8 +361,8 @@ int main(void) {
   }
 
   // shutdown audio
-  ao_close(device);
-  ao_shutdown();
+  //ao_close(device);
+  //ao_shutdown();
 
   // shutdown video
   glfwDestroyWindow(window);
