@@ -3080,7 +3080,7 @@ static int stbi__process_marker(stbi__jpeg *z, int m)
    }
 
    // check for comment block or APP blocks
-   if ((m >= 0xE0 && m <= 0xEF) || m == 0xFE) {
+  if ((m >= 0xE0 && m <= 0xEF) || m == 0xFE) {
       L = stbi__get16be(z->s);
       if (L < 2) {
          if (m == 0xFE)

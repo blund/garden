@@ -1,13 +1,11 @@
 #version 330 core
-out vec4 fragment_farge;
+out vec4 color;
 
-in vec3 punkt_farge;
-in vec2 trekk_koordinater;
+in vec2 texture_coord;
 
-uniform sampler2D trekk;
+uniform sampler2D texture0;
 
 void main()
 {
-
-   fragment_farge = texture(trekk, trekk_koordinater) + vec4(punkt_farge, 0.0);
+   color = texture(texture0, texture_coord);
 }
