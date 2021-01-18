@@ -19,7 +19,7 @@ mat4 view;
 
 void main()
 {
-   vec3 d = normalize(-cam_front);  // dir
+   vec3 d = normalize(-cam_front);           // dir
    vec3 r = normalize(cross(cam_up, d));     // right
    vec3 u = cross(d, r);                     // up
 
@@ -37,6 +37,8 @@ void main()
    gl_Position = proj * view * model * vec4(v_pos, 1.0f);
    texture_coord = vec2(v_texture_coord.x, 1.0f - v_texture_coord.y);
 }
+
+
 
 
 

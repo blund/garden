@@ -1,19 +1,21 @@
 #!tcc -run
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
 #include <string.h>
 
-void println(char *string);
+void  println(char *string);
 char *run(char *command);
+int   exec(char *command);
 char *join(char *goal, char *part);
 
 int main(int argc, char **argv) {
   
-  char *compile = "clang main.c glad.c linalg.c helpers.c";
-  char *flags = "-o test -D_REENTRANT";
-  char *linker_flags = "-Iinclude -lGL -lSDL2 -ldl -lm";
-  char *options = "-march=native -mavx ";
+  char *compile      = "gcc -o test main.c glad.c linalg.c helpers.c";
+  char *flags        = "-D_REENTRANT";
+  char *linker_flags = "-Iinclude/ -lSDL2 -lGL -ldl -lm";
+  char *options      = "-march=native -mavx";
 
   int release = 0;
 
@@ -21,7 +23,7 @@ int main(int argc, char **argv) {
     switch (*argv[1]) {
     case 's':
       println("Doing sanitizing");
-      compile = join(compile, "-fsanitize=address");
+      compile = join(compile, "-O1 -fsanitize=address");
       break;
 
     case 'r':
@@ -40,28 +42,35 @@ int main(int argc, char **argv) {
       return -1;
     }
   }
-
   if (!release) {
-  compile = join(compile, "-ggdb");
+    compile = join(compile, "-ggdb");
   }
-
+  
   compile = join(compile, flags);
   compile = join(compile, linker_flags);
-  compile = join(compile, run("pkg-config --cflags sdl2")); // sdl flags
-  compile = join(compile, run("pkg-config --libs   sdl2")); // sdl libs
+  compile = join(compile, run("sdl2-config --libs --cflags"));
+  compile = join(compile, options);
 
   printf("\nCompiling with following command:\n\t%s\n", compile);
 
+  
   int status = system(compile);
   if (status) {
     println("Failed to compile");
     return -1;
   }
   println("\tCompile success!");
-  run("./test");
+
+  status = system("./test");
+  if (status) {
+    println("\tError during runtime!");
+    return -1;
+  }
   
   return 0;
 }
+
+
 
 void println(char *string) {
   printf("%s\n", string);
@@ -76,6 +85,7 @@ char *join(char *goal, char *part) {
   return new_str;
 }
 
+
 char *run(char *command) {
   FILE *fp;
   
@@ -88,5 +98,12 @@ char *run(char *command) {
   strcpy(result, tmp);
 
   return result;
+}
 
+int exec(char *command) {
+  FILE *fp;
+  
+  fp = popen(command,"r"); 
+  int code = pclose(fp);
+  return code;
 }

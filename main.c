@@ -1,13 +1,10 @@
 #include <stdio.h>
 #include <glad/glad.h>
 #include <SDL2/SDL.h>
+//include <SDL2/SDL_opengl.h>
 
 #include <math.h>
 #include <time.h>
-
-#ifndef __AVX__
-  #define STBI_NO_SIMD
-#endif
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -24,11 +21,11 @@
 
 #define using_entity int pid; int pos;
 typedef struct entity {
-  using_entity;
+  using_entity
 } entity;
 
 typedef struct guy {
-  using_entity;
+  using_entity
 } guy;
 
 typedef struct camera {
@@ -42,52 +39,77 @@ typedef struct camera {
 
 camera cam;
 
+ 
 int main() {
   SDL_Window *window;
   SDL_GLContext context;
-  
-  SDL_Init(SDL_INIT_VIDEO);
+
+  SDL_Init(SDL_INIT_EVERYTHING);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
-  //
-  // Lag window og gl-context
-  //
-  
+
   window = SDL_CreateWindow( "GARDEN",
                              SDL_WINDOWPOS_UNDEFINED,
                              SDL_WINDOWPOS_UNDEFINED,
                              SCREEN_WIDTH, SCREEN_HEIGHT,
-                             SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE );
+                             SDL_WINDOW_OPENGL);
   if (!window) {
     printf("failed to make window!\n\t%s", SDL_GetError());
     return 1;
   }
-
   context = SDL_GL_CreateContext(window);
   if (!context) {
     printf("failed to make context!\n\t%s", SDL_GetError());
     return 1;
   }
-  
+
+  // Fra micrui
+  //glEnable(GL_BLEND);
+  //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  //glDisable(GL_CULL_FACE);
+  //glDisable(GL_DEPTH_TEST);
+  //glEnable(GL_SCISSOR_TEST);
+  //glEnable(GL_TEXTURE_2D);
+  //glEnableClientState(GL_VERTEX_ARRAY);
+  //glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  //glEnableClientState(GL_COLOR_ARRAY);
+
+  /*
+  GLuint id;
+  glGenTextures(1, &id);
+  glBindTexture(GL_TEXTURE_2D, id);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, ATLAS_WIDTH, ATLAS_HEIGHT, 0,
+    GL_ALPHA, GL_UNSIGNED_BYTE, atlas_texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  assert(glGetError() == 0);
+  */
+
+
+ 
+
+  //
+  // Lag window og gl-context
+  //
+ 
   if (SDL_GL_MakeCurrent(window, context)) {
     // 0 on success, negative on failure
     printf("failed to set context!\n\t%s", SDL_GetError());
     return 1;
   }
-
   if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
     printf("failed to get proc loader :/");
     return -1;
   }
-
-  SDL_GL_SetSwapInterval(1);
-
   if (!gladLoadGL()) {
     printf("failed to load gl with glad :/");
     return -1;
   }
+  SDL_GL_SetSwapInterval(1);
+
+
 
   //
   // Kjør kode!
@@ -147,7 +169,6 @@ int main() {
   } else {
     printf("Klarte ikke å laste inn bildet!\n");
   }
-
 
   stbi_image_free(data);
   
@@ -219,6 +240,7 @@ int main() {
     //processInput(window);
 
     double xpos, ypos;
+    xpos = ypos = 0;
     //glfwGetCursorPos(window, &xpos, &ypos);
    
     float time = 0.001f*(float)SDL_GetTicks();
