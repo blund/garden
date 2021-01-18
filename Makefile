@@ -1,29 +1,21 @@
-
-
 sdl_flags := $(shell pkg-config --cflags sdl2)
 sdl_libs  := $(shell pkg-config --libs sdl2)
 
-all:
-	clang game.c glad.c helpers.c linalg.c \
+sdl:
+	clang glad.c test.c linalg.c helpers.c \
+		-lGL -Iinclude -ldl -lm \
+	-g -o test \
 		$(sdl_flags) $(sdl_libs) \
-		-ggdb -o main \
-		-Iinclude -lGL -lglfw -lm -ldl
-o:
-	@rm -f main
-	gcc game.c glad.c helpers.c linalg.c \
-		-O2 -o main \
-		-Iinclude -lGL -lglfw -lm -ldl \
 		-march=native -mavx
-	@./main
+	./test
 s:
-	@rm -f main
-	clang game.c glad.c helpers.c linalg.c \
-		-O1 -g -o main \
-		-fsanitize=undefined,memory \
-		-Iinclude -lm -ldl -lX11 -lGL -lglfw -SDL2\
-		-march=native -mavx
-	ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer ./main
-
+	clang glad.c test.c \
+		-lGL -Iinclude/. -ldl \
+		-fsanitize=address \
+		-O1 -g -o test \
+		-march=native -mavx \
+	   	 $(sdl_flags) $(sdl_libs)
+	ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer ./test
 
 run:
 	./main
