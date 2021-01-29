@@ -12,9 +12,9 @@ char *join(char *goal, char *part);
 
 int main(int argc, char **argv) {
   
-  char *compile      = "gcc -o test main.c glad.c linalg.c helpers.c";
+  char *compile      = "clang -o test main.c glad.c linalg.c helpers.c";
   char *flags        = "-D_REENTRANT";
-  char *linker_flags = "-Iinclude/ -lSDL2 -lGL -ldl -lm";
+  char *linker_flags = "-Iinclude/ -lGL -lSDL2 -ldl -lm";
   char *options      = "-march=native -mavx";
 
   int release = 0;
@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     switch (*argv[1]) {
     case 's':
       println("Doing sanitizing");
-      compile = join(compile, "-O1 -fsanitize=address");
+      compile = join(compile, "-O2 -fsanitize=address");
       break;
 
     case 'r':
@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 
     case 'o':
       println("Optimizing!");
-      compile = join(compile, "-O2");
+      compile = join(compile, "-O3");
       break;
 
     default:
@@ -48,8 +48,8 @@ int main(int argc, char **argv) {
   
   compile = join(compile, flags);
   compile = join(compile, linker_flags);
-  compile = join(compile, run("sdl2-config --libs --cflags"));
   compile = join(compile, options);
+  compile = join(compile, run("sdl2-config --libs --cflags"));
 
   printf("\nCompiling with following command:\n\t%s\n", compile);
 
@@ -78,7 +78,7 @@ void println(char *string) {
 
 char *join(char *goal, char *part) {
   int length = strlen(goal) + strlen(part);
-  char *new_str = (char *)malloc(length + 1);
+  char *new_str = (char *)calloc(length + 2, 1);
   strcpy(new_str, goal);
   new_str[strlen(goal)] = 32;
   strcpy(new_str+strlen(goal)+1, part);
@@ -94,7 +94,7 @@ char *run(char *command) {
   fscanf(fp,"%s", tmp);
   fclose(fp);
 
-  char *result = (char *)malloc(strlen(tmp) + 1);
+  char *result = (char *)calloc(strlen(tmp) + 1, 1);
   strcpy(result, tmp);
 
   return result;
