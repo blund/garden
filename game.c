@@ -23,48 +23,112 @@
 #include "linalg.h"
 #include "helpers.h"
 
-const unsigned int SCR_WIDTH = 600;
+const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
+
+typedef struct controller {
+  int up    : 1;
+  int down  : 1;
+  int left  : 1;
+  int right : 1;
+
+  int one   : 1;
+  int two   : 1;
+} controller;
+
+typedef struct globals {
+  int first_mouse_reading;
+  float dt;
+} globals;
 
 typedef struct camera {
   vec3 pos;
   vec3 front;
-  vec3 target;
   vec3 up;
+
+  float yaw;
+  float pitch;
+  vec3 direction;
+
   float speed;
   float fov;
 } camera;
 
 camera cam;
+controller ctrl;
+
+globals global = {.first_mouse_reading = 1};
 
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
 }
 
-void processInput(GLFWwindow *window) {
+
+void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
+  static float last_x;
+  static float last_y;
+  if (global.first_mouse_reading) {
+    last_x = x_pos;
+    last_y = y_pos;
+    global.first_mouse_reading = 0;
+  }
+
+  float x_offset = x_pos - last_x;
+  float y_offset = last_y - y_pos;
+  last_x = x_pos;
+  last_y = y_pos;
+
+  const float sens = 0.1f;
+  x_offset *= sens;
+  y_offset *= sens;
+
+  cam.yaw   += x_offset;
+  cam.pitch += y_offset;
+
+
+  if(cam.pitch > 89.0f)
+    cam.pitch =  89.0f;
+  if(cam.pitch < -89.0f)
+    cam.pitch = -89.0f;
+
+  float tmp_pitch = cam.pitch * 0.01745329251f;
+  float tmp_yaw   = cam.yaw   * 0.01745329251f;
+
+  
+  cam.front[0] = cos(tmp_yaw) * cos(tmp_pitch);
+  cam.front[1] = sin(tmp_pitch);
+  cam.front[2] = sin(tmp_yaw) * cos(tmp_pitch);
+  normalizeV3(cam.front);
+  printV3(cam.front);
+
+  
+}
+
+void process_keyboard(GLFWwindow *window) {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, 1);
-
   if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
     cam.fov -= 0.01f;
   if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
     cam.fov += 0.01f;
   if (cam.fov < 0.01f)
     cam.fov = 0.01f;
-     
+
+
+  float speed = 7.5f * global.dt;
    
   if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
     vec3 tmp;
     copyV3(cam.front, tmp);
-    scaleV3(tmp, cam.speed);
+    scaleV3(tmp, speed);
     addV3(cam.pos, tmp);
   }
 
   if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
     vec3 tmp;
     copyV3(cam.front, tmp);
-    scaleV3(tmp, cam.speed);
+    scaleV3(tmp, speed);
     subV3(cam.pos, tmp);
   }
 
@@ -72,7 +136,7 @@ void processInput(GLFWwindow *window) {
     vec3 tmp;
     crossV3(cam.front, cam.up, tmp);
     normalizeV3(tmp);
-    scaleV3(tmp, cam.speed);
+    scaleV3(tmp, speed);
     subV3(cam.pos, tmp);
   }
 
@@ -80,7 +144,7 @@ void processInput(GLFWwindow *window) {
     vec3 tmp;
     crossV3(cam.front, cam.up, tmp);
     normalizeV3(tmp);
-    scaleV3(tmp, cam.speed);
+    scaleV3(tmp, speed);
     addV3(cam.pos, tmp);
    }
 }
@@ -98,6 +162,7 @@ typedef struct timer {
 
 int main(void) {
   timer timer;
+
 
   /*
   FILE *write_ptr;
@@ -135,11 +200,17 @@ int main(void) {
   glfwMakeContextCurrent(window);
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
+  glfwSetCursorPosCallback(window, mouse_callback);  
+  //glfwSetKeyCallback(window, keyboard_callback);  
+
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
     printf("Failed to start GLAD");
     return -1;
   }
 
+  // GLFW-SETTINGS GO HERE
+  
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
 
   int fragment_shader = loadShader("shader.fs", GL_FRAGMENT_SHADER);
   int vertex_shader   = loadShader("shader.vs", GL_VERTEX_SHADER);
@@ -233,26 +304,29 @@ int main(void) {
   cam = (camera){
     .speed  = 0.1f,
     .up     = {0.0f, 1.0f, 0.0f},
-    .target = {0.0f, 0.0f, 0.0f},
-    .front  = {0.0f, 0.0f, -1.0f},
-    .pos    = {0.0f, 0.0f, 8.0f},
+    .front  = {1.0f, 0.0f, 0.0f},
+    .pos    = {-15.0f, 1.0f, -20.0f},
     .fov    = 3.1415f * 1.0f/5.0f
   };
 
   float aspect_ratio = (float)SCR_WIDTH / (float)SCR_HEIGHT;
 
+  float last_time    = 0.0f;
+  float current_time = 0.0f;
+  
   //glfwSwapInterval(0.0f);
   while (!glfwWindowShouldClose(window)) {
-    processInput(window);
 
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
-   
-    float time = glfwGetTime();
-   
-    xpos /= SCR_WIDTH;
-    ypos /= SCR_HEIGHT;
+    current_time = glfwGetTime();
+    global.dt = current_time - last_time;
+    last_time = current_time;
 
+
+    process_keyboard(window);
+    
+
+
+   
     perspective(cam.fov, aspect_ratio,
                 0.1f, 100.0f, proj);
    
@@ -272,14 +346,14 @@ int main(void) {
 
     glBindVertexArray(VAO);
 
-    for(unsigned int i = 0; i < 10; i++) {
+    for(unsigned int i = 0; i < 8; i++) {
       initIdM4(model);
       float angle = 20.0f * i;
 
       clearM4(tmp);
-      rotateZ(model, time*0.3f+angle, tmp);
+      rotateZ(model, current_time*0.3f+angle, tmp);
       copyM4(tmp, model);
-      rotateX(model, time+angle, tmp);
+      rotateX(model, current_time+angle, tmp);
       copyM4(tmp, model);
       glBindTexture(GL_TEXTURE_2D, texture);
 
@@ -291,7 +365,8 @@ int main(void) {
         
       glDrawArrays(GL_TRIANGLES, 0, 36);
     }
-    
+
+    printV3(cam.pos);
 
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -300,6 +375,5 @@ int main(void) {
   glfwDestroyWindow(window);
   glfwTerminate();
   exit(EXIT_SUCCESS);
-  
   return 0;
 }

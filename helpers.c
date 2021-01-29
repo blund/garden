@@ -58,7 +58,7 @@ char *loadFile(char *file_name)
 
 }
 
-int loadShader(char *shader_name, GLenum shader_type) {
+int loadShader(char *shader_name, int shader_type) {
   // Last inn og kompiler fragment-shader-program
   int shader_id = glCreateShader(shader_type);
   const char *shader_source = loadFile(shader_name);
