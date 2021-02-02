@@ -7,6 +7,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <stb/stb_image.h> // Laster kun inn funksjonsdeklarasjoner
+
 #include "helpers.h"
 #include "linalg.h"
 
@@ -28,7 +30,6 @@ char *loadFile(char *file_name)
   /* Get the number of bytes */
   fseek(infile, 0L, SEEK_END);
   numbytes = ftell(infile);
-  printf("%li\n", numbytes);
  
   /* reset the file position indicator to 
      the beginning of the file */
@@ -58,12 +59,42 @@ char *loadFile(char *file_name)
 
 }
 
+int loadTexture(char *texture_path) {
+  //
+  // Load texture file
+  //
+  glActiveTexture(GL_TEXTURE0);
+  unsigned int texture;
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+  int width, height, nr_channels;
+  unsigned char *data = stbi_load(texture_path, &width, &height, &nr_channels, 0);
+  if (data) {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+  } else {
+    printf("Klarte ikke å laste inn bildet ved %s!\n", texture_path);
+  }
+
+
+  stbi_image_free(data);
+
+  return texture;
+}
+
+
 int loadShader(char *shader_name, int shader_type) {
   // Last inn og kompiler fragment-shader-program
   int shader_id = glCreateShader(shader_type);
   const char *shader_source = loadFile(shader_name);
   int len = strlen(shader_source);
-  printf("%lu\n", strlen(shader_source));
   glShaderSource(shader_id, 1, &shader_source, &len);
   glCompileShader(shader_id);
 
@@ -80,7 +111,35 @@ int loadShader(char *shader_name, int shader_type) {
   free((char *)shader_source);
 
   return shader_id;
+}
 
+int createShader(char *fs_path, char *vs_path) {
+
+  int fragment_shader = loadShader(fs_path, GL_FRAGMENT_SHADER);
+  int vertex_shader   = loadShader(vs_path, GL_VERTEX_SHADER);
+
+  // Link shadere til et shader objekt, og slett shaderene
+  int shader_program = glCreateProgram();
+  glAttachShader(shader_program, vertex_shader);
+  glAttachShader(shader_program, fragment_shader);
+  glLinkProgram(shader_program);
+
+  // check for linking errors
+  int success;
+  char infoLog[512];
+  glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+  if (!success) {
+    glGetProgramInfoLog(shader_program, 512, NULL, infoLog);
+    printf("Failed to link fragment shader");
+    printf("%s", infoLog);
+  } else {
+    printf("\t Fikk kompilert shader med  %s and %s\n", fs_path, vs_path);
+  }
+  
+  glDeleteShader(vertex_shader);
+  glDeleteShader(fragment_shader);
+
+  return shader_program;
 }
 
 void inline setMat4(int shader, char *param, mat4 value) {

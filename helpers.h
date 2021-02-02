@@ -5,6 +5,9 @@
 
 char *loadFile(char *file_name);
 
+int loadTexture(char *texture_path);
+  
+int createShader(char *fs_path, char *vs_path);
 int loadShader(char *shader_name, int shader_type);
 
 void setMat4(int shader, char *param, mat4 value);
