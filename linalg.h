@@ -35,6 +35,7 @@ void copyV3(vec3 from, vec3 to);
 void crossV3(vec3 u, vec3 v, vec3 result);
 void normalizeV3(vec3 v);
 void printV3(vec3 v);
+void printM4(mat4 m);
 
 // Various
 float rsqrt(float number);

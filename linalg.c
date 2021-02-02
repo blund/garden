@@ -225,3 +225,7 @@ void subV3(vec3 to, vec3 from) {
 void printV3(vec3 v) {
   printf("[%f, %f, %f]\n", v[0], v[1], v[2]);
 }
+
+void printM4(mat4 m) {
+  printf("%f %f %f\n%f %f %f\n%f %f %f\n\n", m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8]);
+}

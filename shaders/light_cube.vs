@@ -16,7 +16,6 @@ uniform vec3 cam_up;
 
 mat4 view;
 
-
 void main()
 {
    vec3 d = normalize(-cam_front);  // dir
@@ -35,7 +34,7 @@ void main()
 
 
    gl_Position = proj * view * model * vec4(v_pos, 1.0f);
-   texture_coord = vec2(v_texture_coord.x, 1.0f - v_texture_coord.y);
+   // texture_coord = vec2(v_texture_coord.x, 1.0f - v_texture_coord.y);
 }
 
 
