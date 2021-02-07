@@ -81,6 +81,7 @@ int loadTexture(char *texture_path) {
     glGenerateMipmap(GL_TEXTURE_2D);
   } else {
     printf("Klarte ikke å laste inn bildet ved %s!\n", texture_path);
+    return 0;
   }
 
 
@@ -106,7 +107,7 @@ int loadShader(char *shader_name, int shader_type) {
     glGetShaderInfoLog(shader_id, 512, NULL, infoLog);
     printf("Failed to compile shader: %s\n", shader_name);
     printf("\t%s", infoLog);
-    return -1;
+    return 0;
   }
   free((char *)shader_source);
 

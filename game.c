@@ -188,7 +188,14 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
   int shader_program = createShader("shaders/shader.fs",     "shaders/shader.vs");
   int lc_shader      = createShader("shaders/light_cube.fs", "shaders/light_cube.vs");
 
-  int texture = loadTexture("data/wall.jpg");
+  if (!shader_program || !lc_shader) {
+    return -1;
+  }
+  
+  int texture = loadTexture("resources/wall.jpg");
+  if (!texture) {
+    return -1;
+  }
  
   
   unsigned int VBO;
@@ -313,10 +320,6 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
     glfwSwapBuffers(window);
     glfwPollEvents();
   }
-  
-  glDeleteVertexArrays(1, &cubeVAO);
-  glDeleteVertexArrays(1, &lightVAO);
-  glDeleteBuffers(1, &VBO);
   
   glfwDestroyWindow(window);
   glfwTerminate();
