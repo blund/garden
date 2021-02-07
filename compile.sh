@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CC="tcc"
+CC="clang"
 FILES="game.c glad.c linalg.c helpers.c"
 FLAGS="-g"
 SANITIZE="-fsanitize=address -fsanitize-blacklist=support/blacklist.txt"

@@ -19,11 +19,18 @@
 
 #include "linalg.h"
 #include "helpers.h"
+#include <unistd.h>
 
 const unsigned int SCR_WIDTH  = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-typedef struct controller {
+typedef enum Game_Mode {
+  GAME,
+  MENU,
+  TEST,
+} Game_Mode;
+
+typedef struct Controller {
   int up    : 1;
   int down  : 1;
   int left  : 1;
@@ -31,11 +38,19 @@ typedef struct controller {
 
   int one   : 1;
   int two   : 1;
-} controller;
+} Controller;
 
 typedef struct Globals {
-  int first_mouse_reading;
+
+  int reset_mouse_pos; // Brukes for å unngå "hopping" i spillet eller når vi går inn/ut fra meny. Se for eksemel ESCAPE-delen av key_callback
+
   float dt;
+
+  Game_Mode game_mode;
+  GLFWwindow *window;
+    
+  double cursor_last_x; // Brukes når spillet har vært pauset
+  double cursor_last_y; // og vi skal gjenoppta spill-modus
 } Globals;
 
 typedef struct Camera {
@@ -66,7 +81,7 @@ typedef struct Light_Cube {
 void process_keyboard(GLFWwindow *window);
 void mouse_callback(GLFWwindow* window, double x_pos, double y_pos);
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 
 
@@ -120,13 +135,16 @@ float cube_model[] = {
 Camera cam = {
   .speed  = 0.1f,
   .up     = {0.0f, 1.0f, 0.0f},
+
   .front  = {1.0f, 0.0f, 0.0f},
   .pos    = {-7.0f, 0.0f, 0.0f},
   .fov    = 3.1415f * 1.0f/5.0f
 };
 
+
 Globals global = {
-  .first_mouse_reading = 1
+  .reset_mouse_pos = 1,
+  .game_mode = GAME,
 };
 
 
@@ -164,17 +182,21 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-  GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+  GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "GARDEN", NULL, NULL);
   if (window == NULL) {
     printf("Failed to make windows");
     glfwTerminate();
     return -1;
   }
+  global.window = window; // Settes for bruk i callback
 
   glfwMakeContextCurrent(window);
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
-  glfwSetCursorPosCallback(window, mouse_callback);  
+
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+  
+  glfwSetCursorPosCallback(window, mouse_callback);
+  glfwSetKeyCallback(window, key_callback);
  
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
     printf("Failed to start GLAD");
@@ -246,11 +268,19 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
   //glfwSwapInterval(0.0f);
   while (!glfwWindowShouldClose(window)) {
 
+    /*
+    if (global.game_mode == MENU) {
+      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    } else if (global.game_mode == GAME) {
+      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+    */
+
     current_time = glfwGetTime();
     global.dt    = current_time - last_time;
     last_time    = current_time;
 
-    process_keyboard(window);
+    //process_keyboard(window);
     
     //
     // Render first cube
@@ -335,12 +365,19 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 }
 
 void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
+
+  if (global.game_mode == MENU) {
+    // Om vi er i en meny vil vi ikke gjøre bevegelser
+    return;
+  }
+  
+
   static float last_x;
   static float last_y;
-  if (global.first_mouse_reading) {
+  if (global.reset_mouse_pos) {
     last_x = x_pos;
     last_y = y_pos;
-    global.first_mouse_reading = 0;
+    global.reset_mouse_pos = 0;
   }
 
   float x_offset = x_pos - last_x;
@@ -372,9 +409,53 @@ void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
 }
 
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+      glfwSetWindowShouldClose(window, 1);
+
+    // @URYDDIG liker ikke at dette er gjort i en callback..    
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+      if (global.game_mode == GAME) {
+        printf("from game\n");
+        global.game_mode = MENU;
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+      } else if (global.game_mode == MENU) {
+        global.game_mode = GAME;
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        global.reset_mouse_pos = 1;
+      }
+    }
+}
+
+
 void process_keyboard(GLFWwindow *window) {
-  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+  assert(0);
+
+  
+  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, 1);
+
+  if ((glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)) {
+    if (global.game_mode == GAME) {
+      printf("Vi er nå i menyen!\n");
+      global.game_mode = MENU;
+    }
+    if (global.game_mode == MENU) {
+      printf("Vi er nå i spillet!\n");
+      global.game_mode = GAME;
+    }
+    //global.game_mode_changed = 1;
+  }
+  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_RELEASE) {
+    //printf("Kommer vi hit?\n");
+    //global.game_mode_changed = 0;
+  }
+                                                           
+  if (global.game_mode == MENU) {
+    return;
+  }
+  
   
   if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
     cam.fov -= 0.01f;
