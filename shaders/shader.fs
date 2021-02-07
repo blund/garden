@@ -7,6 +7,9 @@ in vec3 Frag_pos;
 
 //uniform sampler2D texture0;
 
+uniform vec3 cam_front;
+uniform vec3 cam_pos;
+
 uniform vec3 view_pos;
 uniform vec3 object_color;
 
@@ -30,14 +33,13 @@ void main()
 
   // Beregn spekulært lys
   float specular_strength = 0.5;
-  int   shininess         = 16;
+  int   shininess         = 32;
 
-  vec3 view_dir    = normalize(view_pos - Frag_pos);
+  vec3 view_dir    = normalize(cam_pos - Frag_pos);
   vec3 reflect_dir = reflect(-light_dir, norm);
-  // The reflect function expects the first vector to point from the light source towards the fragment's position, but the lightDir vector is currently pointing the other way around
   float spec     = pow(max(dot(view_dir, reflect_dir), 0.0), shininess);
   vec3  specular = specular_strength * spec * light_color; 
-  specular = vec3(0);
+  //specular = vec3(0);
 
   // Make it shine!!
   vec3 light = (ambient + diffuse + specular) * object_color;
