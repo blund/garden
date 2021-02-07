@@ -1,8 +1,9 @@
 #!/bin/sh
 
-CC="clang"
+CC="tcc"
 FILES="game.c glad.c linalg.c helpers.c"
-SANITIZE="-fsanitize=memory"
+FLAGS="-g"
+SANITIZE="-fsanitize=address -fsanitize-blacklist=support/blacklist.txt"
 LINKER_FLAGS="-Iinclude -lGL -lglfw -ldl -lm"
 
 rm -f main
