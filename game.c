@@ -27,7 +27,6 @@ const unsigned int SCR_HEIGHT = 600;
 typedef enum Game_Mode {
   GAME,
   MENU,
-  TEST,
 } Game_Mode;
 
 typedef struct Controller {
@@ -41,16 +40,9 @@ typedef struct Controller {
 } Controller;
 
 typedef struct Globals {
-
-  int reset_mouse_pos; // Brukes for å unngå "hopping" i spillet eller når vi går inn/ut fra meny. Se for eksemel ESCAPE-delen av key_callback
-
-  float dt;
-
   Game_Mode game_mode;
-  GLFWwindow *window;
-    
-  double cursor_last_x; // Brukes når spillet har vært pauset
-  double cursor_last_y; // og vi skal gjenoppta spill-modus
+  float     dt;
+  int       reset_mouse_pos; // Brukes for å unngå "hopping" i spillet eller når vi går inn/ut fra meny. Se for eksemel ESCAPE-delen av key_callback
 } Globals;
 
 typedef struct Camera {
@@ -145,6 +137,7 @@ Camera cam = {
 Globals global = {
   .reset_mouse_pos = 1,
   .game_mode = GAME,
+  .dt = 0,
 };
 
 
@@ -188,8 +181,7 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
     glfwTerminate();
     return -1;
   }
-  global.window = window; // Settes for bruk i callback
-
+  
   glfwMakeContextCurrent(window);
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
@@ -253,9 +245,9 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
   
   
 
-  mat4 proj  = {0};  // Brukes for å å lagre projeksjons-matrisen
-  mat4 model = {0};  // Brukes for å lagre transformasjonen til modellen
-  mat4 tmp   = {0};
+  mat4 proj  = {};  // Brukes for å å lagre projeksjons-matrisen
+  mat4 model = {};  // Brukes for å lagre transformasjonen til modellen
+  mat4 tmp   = {};
  
 
   float aspect_ratio = (float)SCR_WIDTH / (float)SCR_HEIGHT;
@@ -335,6 +327,7 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
     setVec3(lc_shader, "cam_front", cam.front);
     setVec3(lc_shader, "cam_up",    cam.up);
     // Transler og tegn andre kube. Denne skaleres også ned med matrisen under.
+    clearM4(model);
     initIdM4(model);
     mset(model, 0, 0, 0.5f);
     mset(model, 1, 1, 0.5f);
