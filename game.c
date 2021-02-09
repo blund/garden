@@ -10,6 +10,16 @@
 #include <math.h>
 #include <time.h>
 
+#include <stdint.h>
+
+#define s8  int8_t
+#define u8  uint8_t
+#define s16 int16_t
+#define u16 uint16_t
+#define s32 int32_t
+#define u32 uint32_t
+
+
 #ifndef __AVX__
   #define STBI_NO_SIMD
 #endif
@@ -21,6 +31,9 @@
 #include "helpers.h"
 #include <unistd.h>
 
+
+
+
 const unsigned int SCR_WIDTH  = 800;
 const unsigned int SCR_HEIGHT = 600;
 
@@ -30,13 +43,13 @@ typedef enum Game_Mode {
 } Game_Mode;
 
 typedef struct Controller {
-  int up    : 1;
-  int down  : 1;
-  int left  : 1;
-  int right : 1;
+  u8 up;
+  u8 down;
+  u8 left;
+  u8 right;
 
-  int one   : 1;
-  int two   : 1;
+  u8 esc;
+  u8 q;
 } Controller;
 
 typedef struct Globals {
@@ -164,10 +177,11 @@ int main(void) {
   fread(cube_model,sizeof(float),size,ptr); // read that amount of floats to array
   fclose(ptr);
   */
-
+  
   
 /*
-Since a vertex by itself has no surface (it's just a single point in space) we retrieve a normal vector by using its surrounding vertices to figure out the surface of the vertex. We can use a little trick to calculate the normal vectors for all the cube's vertices by using the cross product, but since a 3D cube is not a complicated shape we can simply manually add them to the vertex data.
+  From LearnOpenGl:
+  Since a vertex by itself has no surface (it's just a single point in space) we retrieve a normal vector by using its surrounding vertices to figure out the surface of the vertex. We can use a little trick to calculate the normal vectors for all the cube's vertices by using the cross product, but since a 3D cube is not a complicated shape we can simply manually add them to the vertex data.
 */
     
   glfwInit();
@@ -210,8 +224,7 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
   if (!texture) {
     return -1;
   }
- 
-  
+   
   unsigned int VBO;
   glGenBuffers(1, &VBO);
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -222,11 +235,11 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
   glGenVertexArrays(1, &cubeVAO);
   glBindVertexArray(cubeVAO);
   
-  // Posisjonsattributt
+  // Position attribute
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
   glEnableVertexAttribArray(0);
 
-  // Normal-attributt
+  // Normal attribute
   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
   glEnableVertexAttribArray(1);
 
@@ -239,12 +252,8 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
   glEnableVertexAttribArray(0);
 
-  // Tekstur-attributt
-  //glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-  //glEnableVertexAttribArray(1);
   
-  
-
+  // These can either be initialized here or cleared before use in the render code, but skipping the cleaning will lead to crashes!
   mat4 proj  = {};  // Brukes for å å lagre projeksjons-matrisen
   mat4 model = {};  // Brukes for å lagre transformasjonen til modellen
   mat4 tmp   = {};
@@ -256,23 +265,15 @@ Since a vertex by itself has no surface (it's just a single point in space) we r
   float current_time = 0.0f;
   
 
-
   //glfwSwapInterval(0.0f);
   while (!glfwWindowShouldClose(window)) {
 
-    /*
-    if (global.game_mode == MENU) {
-      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    } else if (global.game_mode == GAME) {
-      glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    }
-    */
-
+    //
+    // Calculate some time!
     current_time = glfwGetTime();
+
     global.dt    = current_time - last_time;
     last_time    = current_time;
-
-    //process_keyboard(window);
     
     //
     // Render first cube
@@ -360,10 +361,9 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
 
   if (global.game_mode == MENU) {
-    // Om vi er i en meny vil vi ikke gjøre bevegelser
+    // We do not want game movement in the menu...
     return;
   }
-  
 
   static float last_x;
   static float last_y;
@@ -393,7 +393,6 @@ void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
 
   float tmp_pitch = cam.pitch * 0.01745329251f;
   float tmp_yaw   = cam.yaw   * 0.01745329251f;
-
   
   cam.front[0] = cos(tmp_yaw) * cos(tmp_pitch);
   cam.front[1] = sin(tmp_pitch);
@@ -404,13 +403,13 @@ void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
       glfwSetWindowShouldClose(window, 1);
 
     // @URYDDIG liker ikke at dette er gjort i en callback..    
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    // ... Vil heller gjøre dette i hoved-loopen inntil videre, slik at vi ikke sprer viktig kode for mye utover. Kan kanskje sette noen globale variabler som leses.
+    if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS) {
       if (global.game_mode == GAME) {
-        printf("from game\n");
         global.game_mode = MENU;
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
       } else if (global.game_mode == MENU) {
@@ -423,9 +422,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 
 void process_keyboard(GLFWwindow *window) {
-  assert(0);
+  assert(0); // We do not want to end up here.
 
-  
   if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, 1);
 
