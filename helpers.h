@@ -1,6 +1,7 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
+#include <GL/gl.h>
 #include "linalg.h"
 
 char *loadFile(char *file_name);

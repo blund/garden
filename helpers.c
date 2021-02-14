@@ -2,7 +2,6 @@
 #include <sys/stat.h>
 
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
 
 #include <string.h>
 #include <stdlib.h>

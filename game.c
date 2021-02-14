@@ -7,10 +7,13 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+//#include <mu/renderer.h>
+
 #include <math.h>
 #include <time.h>
 
 #include <stdint.h>
+
 
 #define s8  int8_t
 #define u8  uint8_t
@@ -56,6 +59,7 @@ typedef struct Globals {
   Game_Mode game_mode;
   float     dt;
   int       reset_mouse_pos; // Brukes for å unngå "hopping" i spillet eller når vi går inn/ut fra meny. Se for eksemel ESCAPE-delen av key_callback
+  void *    memory;
 } Globals;
 
 typedef struct Camera {
@@ -74,7 +78,21 @@ typedef struct Camera {
 typedef struct Cube {
   vec3 pos;
   vec3 color;
+  vec3 speed;
 } Cube;
+
+typedef struct Stone {
+  vec3  pos;
+  vec3  color;
+
+  vec3  speed;
+
+  vec3  tilt_angle;
+  float spin_speed;
+
+  float spin;
+} Stone;
+
 
 typedef struct Light_Cube {
   vec3 pos;
@@ -141,8 +159,11 @@ Camera cam = {
   .speed  = 0.1f,
   .up     = {0.0f, 1.0f, 0.0f},
 
-  .front  = {1.0f, 0.0f, 0.0f},
-  .pos    = {-7.0f, 0.0f, 0.0f},
+  .front  = {0.16f, -0.10f, -0.98f}, // @OVERFLADISK .yaw og .pitch brukes til å regne
+  .yaw    = -80.6f,               // ut .front hver frame, men for å starte i en
+  .pitch  = -6.1f,                 // gitt retning må alle settes.......
+  
+  .pos    = {-1.0f, 1.8f, 6.0f},
   .fov    = 3.1415f * 1.0f/5.0f
 };
 
@@ -154,10 +175,21 @@ Globals global = {
 };
 
 
-Cube cube = {
-  .pos   = {0.0f, 0.0f, -1.0f},
-  .color = {1.0f, 0.5f, 0.31f}
+Stone cube = {
+  .pos   = {-2.0f, 1.8f, 2.0f},
+  .color = {1.0f, 0.5f, 0.31f},
+  .speed = {2.0f, 0.0f, 0.0f},
+  .tilt_angle = {},
+  .spin_speed = 12.0f,
 };
+
+/*
+Cube cube = {
+  .pos   = {-2.0f, 1.8f, 2.0f},
+  .color = {1.0f, 0.5f, 0.31f},
+  .speed = {2.0f, 0.0f, 0.0f}
+};
+*/
 
 Light_Cube light_cube = {
   .pos   = {1.0f, 1.0f, 1.5f},
@@ -168,6 +200,8 @@ Light_Cube light_cube = {
 
 int main(void) {
 
+  global.memory = malloc(4*1024*1024);
+  
   // Load our cube model
   /*
   FILE *ptr;
@@ -203,7 +237,9 @@ int main(void) {
   
   glfwSetCursorPosCallback(window, mouse_callback);
   glfwSetKeyCallback(window, key_callback);
- 
+
+
+  
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
     printf("Failed to start GLAD");
     return -1;
@@ -211,7 +247,7 @@ int main(void) {
 
   glEnable(GL_DEPTH_TEST);
 
-
+  
   // Lag shader
   int shader_program = createShader("shaders/shader.fs",     "shaders/shader.vs");
   int lc_shader      = createShader("shaders/light_cube.fs", "shaders/light_cube.vs");
@@ -264,28 +300,80 @@ int main(void) {
   float last_time    = 0.0f;
   float current_time = 0.0f;
   
-
+  
   //glfwSwapInterval(0.0f);
+  vec3 speed      = {7.0f, 0.5f, 0.0f};
+  vec3 acc        = {0.0f, -9.81f, 0.0f};
   while (!glfwWindowShouldClose(window)) {
-
+    
     //
     // Calculate some time!
+    //
     current_time = glfwGetTime();
-
+    
     global.dt    = current_time - last_time;
     last_time    = current_time;
+    
+    
+    
+    
+    //
+    // Simulate cube
+    //
+
+    // Legg til akselerasjon til farten
+    vec3 tmp_acc;
+    copyV3(acc, tmp_acc);
+    scaleV3(tmp_acc, global.dt);
+    addV3(speed, tmp_acc);
+    
+    // Legg til summen av fart til posisjon
+    vec3 tmp_speed;
+    copyV3(speed, tmp_speed); 
+    scaleV3(tmp_speed, global.dt);
+    addV3(cube.pos, tmp_speed);
+
+    
+    // Roter steinen med nåværende spin_speed
+    cube.spin += cube.spin_speed * global.dt;
+     
+    
+    // @FORBEDRING - ønsker å legge til friksjon langs horsintalen også... Dette kan skje både i luften (luftmotsatnd) og ved kontakt med vannet her..
+    
+    if (cube.pos[1] < 0) {
+      cube.pos[1] = 0;
+
+      // Friksjonen avhenger ved vinkelen steinen treffer vannet ved, i forhold til horisontalen. Denne går mellom 0 og 1.56, og vi vil skalerer disse verdiene til å gå mellom 1 og 0, hvor 1 bevarer all fart og 0 ikke bevarer noe fart. -bl 14.02.2020
+      float theta = -atan(speed[1]/speed[0]) / 1.56f;
+   
+      float friction = (1 - theta * 0.9f);
+
+      // Flipp y-retning (siden vi har truffet vannet, og møter "uendelig stor masse".
+      speed[1] = -speed[1];      
+
+      // Reduser komponentene ved friksjon.. denne er lik i begge for nå.
+      // @FORBEDRING - fart reduseres nå avhengig av vinkel, men se på fysikk for friksjon. Avhenger av normalkraft og en faktor eller noe?
+      // @FORBEDRING - den avtagende farten bør avhenge av lengden på varts-fektoren på noe vis... Se hvordan friksjon ofte gjøres.
+      speed[1] *= friction;
+      speed[0] *= friction;
+      cube.spin_speed *= friction;
+    }
+    
+   
+    
+    
     
     //
     // Render first cube
     //
-
+    
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    
     
     glUseProgram(shader_program);
     glBindVertexArray(cubeVAO);
-
+    
     //setInt(shader_program, "texture0", 0);
     setVec3(shader_program, "view_color",   cam.pos);
     setVec3(shader_program, "object_color", cube.color);
@@ -302,11 +390,35 @@ int main(void) {
     setVec3(shader_program, "cam_up",    cam.up);
 
     // Transler og tegn første kube
-    initIdM4(model);
 
-    rotateZ(model, current_time*0.3f, tmp);
+    // @FORBEDRING - her har vi behov for rotateY, som aldri har fungert... Så på tide å fikse det! Vi vil også rotere littegran bakover mot utkastsretning... Dette må også forskes litt videre på - hvordan roterer vi med en vinkel.
+
+    // @FORBEDRING - vi vil OGSÅ at firkanten skal være både krympet og rotert, noe som krever matrisemultiplikasjon.... Vet ikke om det er lettere å gjøre dette på CPU'en (må legge til matrisemultiplikasjon og fikse rotateY), eller om det bare skal gjøres på GPU... Hurra, dilemma!
+
+   
+
+    // @TANKER - rekkefølge for skalering
+    // Skaler modell
+    // Roter langs y-akse med tid
+    // Vend bakover mot utkaststed.... må tenke litt på dette, må nok gjøres med en generell rotasjonsmatrise: https://en.wikipedia.org/wiki/Rotation_matrix#Nested_dimensions (ser ut som GPU-arbeid :) )
+
+
+
+    clearM4(model);
+    initIdM4(model);
+    rotateY(model, cube.spin, tmp);
     copyM4(tmp, model);
-    mkTranslation(model, cube.pos);
+
+    /*
+    clearM4(model);
+    initIdM4(model);
+    mset(model, 0, 0, 0.5f);
+    mset(model, 1, 1, 0.1f);
+    mset(model, 2, 2, 0.5f);
+    */
+    mkTranslation(model, cube.pos); // Gjør den flat, som en liten sten...
+
+
     setMat4(shader_program, "model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -333,8 +445,7 @@ int main(void) {
     mset(model, 0, 0, 0.5f);
     mset(model, 1, 1, 0.5f);
     mset(model, 2, 2, 0.5f);
-    mset(model, 1, 1, 0.5f);
-    
+        
     mkTranslation(model, light_cube.pos);
     
     setMat4(lc_shader, "model", model);

@@ -151,9 +151,9 @@ void rotateX(mat4 m, float deg, mat4 res) {
 
 void rotateY(mat4 m, float deg, mat4 res) {
   float rot[16] = {
-    cos(deg),  0.0f, sin(deg), 0.0f,
+    cos(deg),  0.0f, sin(deg),  0.0f,
     0.0f,      1.0f, 0.0f,      0.0f,
-    -sin(deg),  0.0f, cos(deg),  0.0f, 
+    -sin(deg), 0.0f, cos(deg),  0.0f, 
     0.0f,      0.0f, 0.0f,      1.0f,
   };
 
@@ -196,7 +196,17 @@ void crossV3(vec3 u, vec3 v, vec3 result) {
   result[1] = u[2]*v[0] - u[0]*v[2];
   result[2] = u[0]*v[1] - u[1]*v[0];
 }
+/*
+float inline dotV3(vec3 u, vec3 v) {
+  return u[0]*v[0] + u[1]*v[1] + u[2]*v[2];
+}
 
+float angleV3(vec3 u, vec3 v) {
+  float len_u = sqrt(pow(u[0],2) + pow(u[1],2) + pow(u[2],2));
+  float len_v = sqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2));
+  return dotV3(u, v)/(len_u * len_v);  
+}
+*/
 void scaleV3(vec3 v, float f) {
   v[0] *= f;
   v[1] *= f;
