@@ -12,6 +12,8 @@
 
 #include "linalg.h"
 
+
+
 /*
   Merk her at matriser er "column major", altså
   at man traverserer fra første kolonne og ned, så neste kolonne og ned..
@@ -60,7 +62,7 @@ void mkTranslation(mat4 m, vec3 v) {
 void translate(mat4 m, vec3 v, mat4 res, mat4 tmp) {
   initIdM4(tmp);
   mkTranslation(tmp, v);
-  multiply(m, tmp, res);
+  mulM4(m, tmp, res);
 }
 
 void clearM4(mat4 m) {
@@ -74,6 +76,19 @@ void copyM4(mat4 from, mat4 to) {
     to[i] = from[i];
   }
 }
+/*
+void mulM4(mat4 A, mat4 B, mat4 result) {
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; i < 4; i++) {
+      mset(result, i, j,
+           mget(A, i, 1) * mget(B, 1, j)
+           mget(A, i, 2) * mget(B, 2, j)
+           mget(A, i, 3) * mget(B, 3, j)
+           mget(A, i, 4) * mget(B, 4, j));
+    }
+  }
+}
+*/
 
 
 void ortho(float left, float right, float bottom, float top,
@@ -116,7 +131,7 @@ void perspective(float fov, float aspect, float near, float far, mat4 res) {
 
 
 
-void multiply(mat4 m1, mat4 m2, mat4 res) {
+void mulM4(mat4 m1, mat4 m2, mat4 res) {
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
       res[j + i * 4] = 0;
@@ -135,7 +150,7 @@ void rotateZ(mat4 m, float deg, mat4 res) {
     0.0f, 0.0f,    0.0f,     1.0f,
   };
 
-  multiply(m, rot, res);
+  mulM4(m, rot, res);
 }
 
 void rotateX(mat4 m, float deg, mat4 res) {
@@ -146,7 +161,7 @@ void rotateX(mat4 m, float deg, mat4 res) {
     0.0f, 0.0f,     0.0f,      1.0f,
   };
 
-  multiply(rot, m, res);
+  mulM4(rot, m, res);
 }
 
 void rotateY(mat4 m, float deg, mat4 res) {
@@ -157,7 +172,7 @@ void rotateY(mat4 m, float deg, mat4 res) {
     0.0f,      0.0f, 0.0f,      1.0f,
   };
 
-  multiply(rot, m, res);
+  mulM4(rot, m, res);
 }
 
 
@@ -184,6 +199,10 @@ inline float rsqrt( float number ) {
 */
 
 
+float lenV3(vec3 v) {
+  return sqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2));
+}
+
 void normalizeV3(vec3 v) {
   float factor = 1/sqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2)); //rsqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2));
   v[0] *= factor;
@@ -196,8 +215,8 @@ void crossV3(vec3 u, vec3 v, vec3 result) {
   result[1] = u[2]*v[0] - u[0]*v[2];
   result[2] = u[0]*v[1] - u[1]*v[0];
 }
-/*
-float inline dotV3(vec3 u, vec3 v) {
+
+float dotV3(vec3 u, vec3 v) {
   return u[0]*v[0] + u[1]*v[1] + u[2]*v[2];
 }
 
@@ -206,7 +225,7 @@ float angleV3(vec3 u, vec3 v) {
   float len_v = sqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2));
   return dotV3(u, v)/(len_u * len_v);  
 }
-*/
+
 void scaleV3(vec3 v, float f) {
   v[0] *= f;
   v[1] *= f;

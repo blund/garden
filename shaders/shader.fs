@@ -21,7 +21,7 @@ void main()
 {
   // Brukes for å la lysstyrken avta ved avstand!
   // Større 'distance_factor' gir lysere lys.
-  float distance_factor = 1.0;
+  float distance_factor = 1.2;
   float recip_distance  = distance_factor * 1/distance(light_pos, Frag_pos);
 
   

@@ -27,7 +27,7 @@ void rotateZ(mat4 m, float deg, mat4 res);
 void rotateX(mat4 m, float deg, mat4 res);
 void rotateY(mat4 m, float deg, mat4 res);
 void translate(mat4 m, vec3 v, mat4 res, mat4 tmp);
-void multiply(mat4 m1, mat4 m2, mat4 res);
+void mulM4(mat4 m1, mat4 m2, mat4 res);
 
 
 void ortho(float left, float right, float bottom, float top,
@@ -35,12 +35,14 @@ void ortho(float left, float right, float bottom, float top,
 void perspective(float fov, float aspect, float near, float far, mat4 res);
 
 // Vectors
+float lenV3(vec3 v);
 void normalizeV3(vec3 v);
 void setV3(vec3 v, int a, int b, int c);
 void scaleV3(vec3 v, float f);
 void addV3(vec3 to, vec3 from);
 void subV3(vec3 to, vec3 from);
 void copyV3(vec3 from, vec3 to);
+float dotV3(vec3 u, vec3 v);
 void crossV3(vec3 u, vec3 v, vec3 result);
 void normalizeV3(vec3 v);
 void printV3(vec3 v);

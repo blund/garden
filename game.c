@@ -86,11 +86,14 @@ typedef struct Stone {
   vec3  color;
 
   vec3  speed;
+  vec3  acc;
 
   vec3  tilt_angle;
   float spin_speed;
 
   float spin;
+
+  int dead;
 } Stone;
 
 
@@ -175,13 +178,29 @@ Globals global = {
 };
 
 
-Stone cube = {
+Stone stone = {
   .pos   = {-2.0f, 1.8f, 2.0f},
-  .color = {1.0f, 0.5f, 0.31f},
-  .speed = {2.0f, 0.0f, 0.0f},
+  .speed = {},
+  .acc   = {},
+  .color = {},
+  .tilt_angle = {},
+  .spin_speed = 0,
+  .dead = 0,
+};
+
+Stone init_stone = {
+  .pos   = {-2.0f, 1.8f,   2.0f},
+  .speed = {4.0f,  0.5f,  0.0f},
+  .acc   = {0.0f,  -9.81f, 0.0f},
+  
+  .color = {1.0f,  0.5f,   0.31f},
+  
   .tilt_angle = {},
   .spin_speed = 12.0f,
+
+  .dead = 0,
 };
+
 
 /*
 Cube cube = {
@@ -201,21 +220,25 @@ Light_Cube light_cube = {
 int main(void) {
 
   global.memory = malloc(4*1024*1024);
+  stone = init_stone;
+ 
+
+  printf("%p\n", global.memory);
   
-  // Load our cube model
+  // Load our stone model
   /*
   FILE *ptr;
-  ptr = fopen("data/cube.model","rb");
+  ptr = fopen("data/stone.model","rb");
   int size;
   fread(&size,sizeof(int),1,ptr); // read how many floats in the model
-  fread(cube_model,sizeof(float),size,ptr); // read that amount of floats to array
+  fread(stone_model,sizeof(float),size,ptr); // read that amount of floats to array
   fclose(ptr);
   */
   
   
 /*
   From LearnOpenGl:
-  Since a vertex by itself has no surface (it's just a single point in space) we retrieve a normal vector by using its surrounding vertices to figure out the surface of the vertex. We can use a little trick to calculate the normal vectors for all the cube's vertices by using the cross product, but since a 3D cube is not a complicated shape we can simply manually add them to the vertex data.
+  Since a vertex by itself has no surface (it's just a single point in space) we retrieve a normal vector by using its surrounding vertices to figure out the surface of the vertex. We can use a little trick to calculate the normal vectors for all the stone's vertices by using the cross product, but since a 3D stone is not a complicated shape we can simply manually add them to the vertex data.
 */
     
   glfwInit();
@@ -267,9 +290,9 @@ int main(void) {
   glBufferData(GL_ARRAY_BUFFER, sizeof(cube_model), cube_model, GL_STATIC_DRAW);
 
 
-  unsigned int cubeVAO;
-  glGenVertexArrays(1, &cubeVAO);
-  glBindVertexArray(cubeVAO);
+  unsigned int stoneVAO;
+  glGenVertexArrays(1, &stoneVAO);
+  glBindVertexArray(stoneVAO);
   
   // Position attribute
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
@@ -302,8 +325,8 @@ int main(void) {
   
   
   //glfwSwapInterval(0.0f);
-  vec3 speed      = {7.0f, 0.5f, 0.0f};
-  vec3 acc        = {0.0f, -9.81f, 0.0f};
+  //vec3 speed      = {12.0f, 0.5f, 0.0f};
+  //vec3 acc        = {0.0f, -9.81f, 0.0f};
   while (!glfwWindowShouldClose(window)) {
     
     //
@@ -318,45 +341,58 @@ int main(void) {
     
     
     //
-    // Simulate cube
+    // Simulate stone
     //
 
-    // Legg til akselerasjon til farten
-    vec3 tmp_acc;
-    copyV3(acc, tmp_acc);
-    scaleV3(tmp_acc, global.dt);
-    addV3(speed, tmp_acc);
-    
-    // Legg til summen av fart til posisjon
-    vec3 tmp_speed;
-    copyV3(speed, tmp_speed); 
-    scaleV3(tmp_speed, global.dt);
-    addV3(cube.pos, tmp_speed);
+    if (!stone.dead) {
+      // Legg til akselerasjon til farten
+      vec3 tmp_acc;
+      copyV3(stone.acc, tmp_acc);
+      scaleV3(tmp_acc, global.dt);
+      addV3(stone.speed, tmp_acc);
+      
+      // Legg til summen av fart til posisjon
+      vec3 tmp_speed;
+      copyV3(stone.speed, tmp_speed); 
+      scaleV3(tmp_speed, global.dt);
+      addV3(stone.pos, tmp_speed);
+      
+      
+      // Roter steinen med nåværende spin_speed
+      stone.spin += stone.spin_speed * global.dt;
+      
+      
+      // @FORBEDRING - ønsker å legge til friksjon langs horsintalen også... Dette kan skje både i luften (luftmotsatnd) og ved kontakt med vannet her..
+      
+      if (stone.pos[1] < 0) {
+        
+        stone.pos[1] = 0;
+        
+        // Friksjonen avhenger ved vinkelen steinen treffer vannet ved, i forhold til horisontalen. Denne går mellom 0 og 1.56, og vi vil skalerer disse verdiene til å gå mellom 1 og 0, hvor 1 bevarer all fart og 0 ikke bevarer noe fart. -bl 14.02.2020
+        
+        // @!!!!!!!!!  Denne er feil nå!
+        
+        vec3 xz_dir = {stone.speed[0], 0.0f, stone.speed[2]}; // Dette er ikke riktig enda!
+        normalizeV3(xz_dir);
+        float theta = angleV3(xz_dir, stone.speed);
+        
+        printf("%f\n", theta);
 
-    
-    // Roter steinen med nåværende spin_speed
-    cube.spin += cube.spin_speed * global.dt;
-     
-    
-    // @FORBEDRING - ønsker å legge til friksjon langs horsintalen også... Dette kan skje både i luften (luftmotsatnd) og ved kontakt med vannet her..
-    
-    if (cube.pos[1] < 0) {
-      cube.pos[1] = 0;
+        // Den gamle koden, for referanse..
+        //float theta = -atan(stone.speed[1]/stone.speed[0]) / 1.56f;
 
-      // Friksjonen avhenger ved vinkelen steinen treffer vannet ved, i forhold til horisontalen. Denne går mellom 0 og 1.56, og vi vil skalerer disse verdiene til å gå mellom 1 og 0, hvor 1 bevarer all fart og 0 ikke bevarer noe fart. -bl 14.02.2020
-      float theta = -atan(speed[1]/speed[0]) / 1.56f;
-   
-      float friction = (1 - theta * 0.9f);
+        // @FORBEDRING Er usikker på hvordan vi skal regne ut friksjon, vi vil finne en sammenheng mellom vinkel og fart som fungerer bra. Lar den være slik for nå :)
+        float friction = theta * 0.8;
+              
+        // Flipp y-retning (siden vi har truffet vannet, og møter "uendelig stor masse".
+        stone.speed[1] = -stone.speed[1];      
+        scaleV3(stone.speed, friction); // Skaler hele farten med friksjonen!!!
+        stone.spin_speed *= friction;
+      }
+      //printf("%f\n", lenV3(stone.speed));
 
-      // Flipp y-retning (siden vi har truffet vannet, og møter "uendelig stor masse".
-      speed[1] = -speed[1];      
-
-      // Reduser komponentene ved friksjon.. denne er lik i begge for nå.
-      // @FORBEDRING - fart reduseres nå avhengig av vinkel, men se på fysikk for friksjon. Avhenger av normalkraft og en faktor eller noe?
-      // @FORBEDRING - den avtagende farten bør avhenge av lengden på varts-fektoren på noe vis... Se hvordan friksjon ofte gjøres.
-      speed[1] *= friction;
-      speed[0] *= friction;
-      cube.spin_speed *= friction;
+      // Når farten er liten nok bare slutter vi å simuler steinen.
+      if (lenV3(stone.speed) < 0.2f) stone.dead = 1;
     }
     
    
@@ -364,7 +400,7 @@ int main(void) {
     
     
     //
-    // Render first cube
+    // Render first stone
     //
     
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -372,11 +408,11 @@ int main(void) {
     
     
     glUseProgram(shader_program);
-    glBindVertexArray(cubeVAO);
+    glBindVertexArray(stoneVAO);
     
     //setInt(shader_program, "texture0", 0);
     setVec3(shader_program, "view_color",   cam.pos);
-    setVec3(shader_program, "object_color", cube.color);
+    setVec3(shader_program, "object_color", stone.color);
     setVec3(shader_program, "light_color",  light_cube.color);
     setVec3(shader_program, "light_pos",    light_cube.pos);    
     
@@ -402,21 +438,25 @@ int main(void) {
     // Roter langs y-akse med tid
     // Vend bakover mot utkaststed.... må tenke litt på dette, må nok gjøres med en generell rotasjonsmatrise: https://en.wikipedia.org/wiki/Rotation_matrix#Nested_dimensions (ser ut som GPU-arbeid :) )
 
-
-
     clearM4(model);
-    initIdM4(model);
-    rotateY(model, cube.spin, tmp);
-    copyM4(tmp, model);
+    //initIdM4(model);
 
-    /*
-    clearM4(model);
-    initIdM4(model);
-    mset(model, 0, 0, 0.5f);
-    mset(model, 1, 1, 0.1f);
-    mset(model, 2, 2, 0.5f);
-    */
-    mkTranslation(model, cube.pos); // Gjør den flat, som en liten sten...
+    mat4 scale;
+    clearM4(scale);
+    initIdM4(scale);
+    mset(scale, 0, 0, 0.5f);
+    mset(scale, 1, 1, 0.1f);
+    mset(scale, 2, 2, 0.5f);
+
+    rotateY(scale, stone.spin, model);
+    //copyM4(tmp, model);
+
+    
+    
+    //mulM4(model
+   
+      
+    mkTranslation(model, stone.pos); // Gjør den flat, som en liten sten...
 
 
     setMat4(shader_program, "model", model);
@@ -514,12 +554,12 @@ void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
       glfwSetWindowShouldClose(window, 1);
 
     // @URYDDIG liker ikke at dette er gjort i en callback..    
     // ... Vil heller gjøre dette i hoved-loopen inntil videre, slik at vi ikke sprer viktig kode for mye utover. Kan kanskje sette noen globale variabler som leses.
-    if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS) {
+    if (key ==  GLFW_KEY_M && action == GLFW_PRESS) {
       if (global.game_mode == GAME) {
         global.game_mode = MENU;
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -529,6 +569,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         global.reset_mouse_pos = 1;
       }
     }
+
+    
+    if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+      stone = init_stone;
+
+      copyV3(cam.pos, stone.pos);
+      
+      copyV3(cam.front, stone.speed);
+      scaleV3(stone.speed, 8.0f);
+    }
+
 }
 
 
@@ -616,33 +667,42 @@ void process_keyboard(GLFWwindow *window) {
     subV3(cam.pos, tmp);
    }
 
-
+  // Reset steinen
+  if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+    stone = (Stone){
+      .pos   = {-2.0f, 1.8f, 2.0f},
+      .color = {1.0f, 0.5f, 0.31f},
+      .speed = {2.0f, 0.0f, 0.0f},
+      .tilt_angle = {},
+      .spin_speed = 12.0f,
+    };
+  }
 
   // Bevegelser for kuben
   if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
     copyV3(cam.front, tmp);
     scaleV3(tmp, speed);
-    addV3(cube.pos, tmp);
+    addV3(stone.pos, tmp);
   }
 
   if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
     copyV3(cam.front, tmp);
     scaleV3(tmp, speed);
-    subV3(cube.pos, tmp);
+    subV3(stone.pos, tmp);
   }
 
   if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
     crossV3(cam.front, cam.up, tmp);
     normalizeV3(tmp);
     scaleV3(tmp, speed);
-    subV3(cube.pos, tmp);
+    subV3(stone.pos, tmp);
   }
 
   if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
     crossV3(cam.front, cam.up, tmp);
     normalizeV3(tmp);
     scaleV3(tmp, speed);
-    addV3(cube.pos, tmp);
+    addV3(stone.pos, tmp);
    }
   
 }
