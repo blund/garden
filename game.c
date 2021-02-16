@@ -35,7 +35,10 @@
 #include <unistd.h>
 
 
-
+float min(float x, float y) {
+  if (x < y) return x;
+  return y;
+}
 
 const unsigned int SCR_WIDTH  = 800;
 const unsigned int SCR_HEIGHT = 600;
@@ -166,7 +169,7 @@ Camera cam = {
   .yaw    = -80.6f,               // ut .front hver frame, men for å starte i en
   .pitch  = -6.1f,                 // gitt retning må alle settes.......
   
-  .pos    = {-1.0f, 1.8f, 6.0f},
+  .pos    = {-1.0f, 2.0f, 6.0f},
   .fov    = 3.1415f * 1.0f/5.0f
 };
 
@@ -189,7 +192,7 @@ Stone stone = {
 };
 
 Stone init_stone = {
-  .pos   = {-2.0f, 1.8f,   2.0f},
+  .pos   = {-2.0f, 1.4f,   2.0f},
   .speed = {4.0f,  0.5f,  0.0f},
   .acc   = {0.0f,  -9.81f, 0.0f},
   
@@ -220,7 +223,7 @@ Light_Cube light_cube = {
 int main(void) {
 
   global.memory = malloc(4*1024*1024);
-  stone = init_stone;
+  //  stone = init_stone;
  
 
   printf("%p\n", global.memory);
@@ -336,9 +339,7 @@ int main(void) {
     
     global.dt    = current_time - last_time;
     last_time    = current_time;
-    
-    
-    
+        
     
     //
     // Simulate stone
@@ -370,33 +371,32 @@ int main(void) {
         
         // Friksjonen avhenger ved vinkelen steinen treffer vannet ved, i forhold til horisontalen. Denne går mellom 0 og 1.56, og vi vil skalerer disse verdiene til å gå mellom 1 og 0, hvor 1 bevarer all fart og 0 ikke bevarer noe fart. -bl 14.02.2020
         
-        // @!!!!!!!!!  Denne er feil nå!
-        
-        vec3 xz_dir = {stone.speed[0], 0.0f, stone.speed[2]}; // Dette er ikke riktig enda!
-        normalizeV3(xz_dir);
-        float theta = angleV3(xz_dir, stone.speed);
-        
-        printf("%f\n", theta);
+        // @FORBEDRING! Friksjon regnes ut på en dum måte nå. Vinkelen på kastet er nå samme som vinkelen kameraet ser med horisontalen. Dette er greit. Friksjonen er derimot avhengig av denne vinkelen, som ikke stemmer helt... Vikipedia sier at den optimale vinkelen skal være 20 grader, altså 0.349 radianer. Vi må sette denne til å gi størst bevaring (0.8 / 0.9 eller noe), og la bevaringen gå ned på noe vis med høyere og lavere vinkler.
 
-        // Den gamle koden, for referanse..
-        //float theta = -atan(stone.speed[1]/stone.speed[0]) / 1.56f;
+        // @MATTE noe er feil med utregningen av denne vinkelen... den skal liksom svare til hvor mange grader opp fra xz-planet den er, men det er den ikke... Kan være noe feil i 'angleV3'-funksjonen.... Hurra for bugs!
 
-        // @FORBEDRING Er usikker på hvordan vi skal regne ut friksjon, vi vil finne en sammenheng mellom vinkel og fart som fungerer bra. Lar den være slik for nå :)
-        float friction = theta * 0.8;
+        // @USIKKER vi snur steinens fart FØR vi sjekker vinkel :D
+        stone.speed[1] = -stone.speed[1];
+        
+        vec3 xz_dir = {stone.speed[0], 0.0f, stone.speed[2]}; // Isoler xz-komponenten
+        normalizeV3(xz_dir); // @USIKKER tror man må normalisere??? Vet ikke
+        float theta = angleV3(stone.speed, xz_dir); // Finn vinkelen til kastet langs xz-komponenten
+
+        printf("deg: %f\n", theta * 180 / 3.1415);
+        printf("fri: %f\n", fabs(theta-0.349066f)*4.0f);
+        // float theta = -atan(stone.speed[1]/stone.speed[0]) / 1.56f; // Den gamle måten å regne ut vinkel.. Tror denne stemte?
+
+        float friction = (1.0f - min(fabs(0.349-theta)*5.0f, 1.0f))*0.9f;
               
         // Flipp y-retning (siden vi har truffet vannet, og møter "uendelig stor masse".
-        stone.speed[1] = -stone.speed[1];      
+        
         scaleV3(stone.speed, friction); // Skaler hele farten med friksjonen!!!
-        stone.spin_speed *= friction;
+        stone.spin_speed *= friction;   // Reduser også spinne-hastigheten
       }
-      //printf("%f\n", lenV3(stone.speed));
-
+     
       // Når farten er liten nok bare slutter vi å simuler steinen.
       if (lenV3(stone.speed) < 0.2f) stone.dead = 1;
     }
-    
-   
-    
     
     
     //
@@ -427,20 +427,14 @@ int main(void) {
 
     // Transler og tegn første kube
 
-    // @FORBEDRING - her har vi behov for rotateY, som aldri har fungert... Så på tide å fikse det! Vi vil også rotere littegran bakover mot utkastsretning... Dette må også forskes litt videre på - hvordan roterer vi med en vinkel.
-
-    // @FORBEDRING - vi vil OGSÅ at firkanten skal være både krympet og rotert, noe som krever matrisemultiplikasjon.... Vet ikke om det er lettere å gjøre dette på CPU'en (må legge til matrisemultiplikasjon og fikse rotateY), eller om det bare skal gjøres på GPU... Hurra, dilemma!
-
-   
 
     // @TANKER - rekkefølge for skalering
-    // Skaler modell
-    // Roter langs y-akse med tid
-    // Vend bakover mot utkaststed.... må tenke litt på dette, må nok gjøres med en generell rotasjonsmatrise: https://en.wikipedia.org/wiki/Rotation_matrix#Nested_dimensions (ser ut som GPU-arbeid :) )
+    // DONE - Skaler modell
+    // DONE - Roter langs y-akse med tid
+    // TODO - Vend bakover mot utkaststed.... må tenke litt på dette, må nok gjøres med en generell rotasjonsmatrise: https://en.wikipedia.org/wiki/Rotation_matrix#Nested_dimensions (ser ut som GPU-arbeid :) )
 
     clearM4(model);
-    //initIdM4(model);
-
+   
     mat4 scale;
     clearM4(scale);
     initIdM4(scale);
@@ -448,16 +442,8 @@ int main(void) {
     mset(scale, 1, 1, 0.1f);
     mset(scale, 2, 2, 0.5f);
 
-    rotateY(scale, stone.spin, model);
-    //copyM4(tmp, model);
-
-    
-    
-    //mulM4(model
-   
-      
-    mkTranslation(model, stone.pos); // Gjør den flat, som en liten sten...
-
+    rotateY(scale, stone.spin, model); // Roter 'scale' med 'stone.spin' radianer om y-aksen, og lagre resultatet i 'model'
+    mkTranslation(model, stone.pos);   // Transler 'model' til stone.pos
 
     setMat4(shader_program, "model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -572,12 +558,28 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
     
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
-      stone = init_stone;
-
-      copyV3(cam.pos, stone.pos);
+      // @FORBEDRING - Basically må vi bestemme oss for hvordan vi skal gjennomføre kastet... Steinen skal ideelt sett ha en vinkel på 20 grader. Denne må være avhengig av hvor vi ser, men kanskje ikke direkte. Kanskje den kan være dobbelte av vår vinkel fra horisontalen... Vi får se!
+      /*
+        vec3 xz_dir = {cam.front[0], 0.0f, cam.front[2]}; // Isoler xz-komponenten
+        normalizeV3(xz_dir); // @USIKKER tror man må normalisere??? Vet ikke
+        float theta = angleV3(cam.front, xz_dir); // Finn vinkelen til kastet
+        
+        theta *= copysign(1.0f, cam.front[1]); // Gjenskap fortegn
+        
+        printf("%f\n", theta*180.0f/3.1415f);
+      */
       
+      // @OPPRYDDING - Dette må flyttes til simulasjons-koden.
+      // @FORBEDRING - Vi vil at tiden man holder inne knappen skal øke kastets fart... Dette krever at vi lagrer tiden når knappen ble trykket, og når knappen slippes lager vi en delta som skaleres (logaritmisk?) slik at det skaleres om en toppverdi.
+      
+      stone = init_stone;
+      stone.pos[0] = cam.pos[0]; // Kopier bare x- og z-koordinater, høyden vil være fast i 'kaste-høyde'
+      stone.pos[2] = cam.pos[2]; //
+
+      addV3(stone.pos, cam.front); // @FORBEDRING - Dette var et forsøk på å flytte den nye stenen lengre fram... Det vi vil er at stenen skal holdes 'foran' oss, og at kamera vender bakover mens man lader opp til kast... Får se mer på dette senere :)
+
       copyV3(cam.front, stone.speed);
-      scaleV3(stone.speed, 8.0f);
+      scaleV3(stone.speed, 12.0f);
     }
 
 }
@@ -703,6 +705,5 @@ void process_keyboard(GLFWwindow *window) {
     normalizeV3(tmp);
     scaleV3(tmp, speed);
     addV3(stone.pos, tmp);
-   }
-  
+   }  
 }

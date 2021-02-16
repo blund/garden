@@ -223,7 +223,7 @@ float dotV3(vec3 u, vec3 v) {
 float angleV3(vec3 u, vec3 v) {
   float len_u = sqrt(pow(u[0],2) + pow(u[1],2) + pow(u[2],2));
   float len_v = sqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2));
-  return dotV3(u, v)/(len_u * len_v);  
+  return acos(dotV3(u, v)/(len_u * len_v));  
 }
 
 void scaleV3(vec3 v, float f) {
