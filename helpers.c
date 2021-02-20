@@ -89,7 +89,7 @@ int loadTexture(char *texture_path) {
   return texture;
 }
 
-
+/*
 int loadShader(char *shader_name, int shader_type) {
   // Last inn og kompiler fragment-shader-program
   int shader_id = glCreateShader(shader_type);
@@ -154,3 +154,4 @@ void inline setInt(int shader, char *param, int value) {
 void inline setVec3(int shader, char *param, vec3 value) {
   glUniform3fv(glGetUniformLocation(shader, param), 1, value);
 }
+*/

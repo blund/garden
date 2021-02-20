@@ -13,21 +13,16 @@
 #include "linalg.h"
 
 
+// http://scipp.ucsc.edu/~haber/ph216/rotation_12.pdf
+// Rotasjon om vilkårlig akse!!
 
 /*
   Merk her at matriser er "column major", altså
   at man traverserer fra første kolonne og ned, så neste kolonne og ned..
   Vi bruker en interface som gjør dette litt lettere :)
- */
-/*
-mat4 mkM4() {
-  return (mat4)malloc(4*4*sizeof(float));
-}
+  (mset og mgdet bruker rad-kolonne-indeksering)
 
-vec3 mkV3() {
-  return (mat4)malloc(3*sizeof(float));
-}
-*/
+ */
 
 void inline mset(mat4 m, int row, int col, float val) {
   m[row + 4*col] = val;

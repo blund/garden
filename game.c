@@ -15,12 +15,6 @@
 #include <stdint.h>
 
 
-#define s8  int8_t
-#define u8  uint8_t
-#define s16 int16_t
-#define u16 uint16_t
-#define s32 int32_t
-#define u32 uint32_t
 
 
 #ifndef __AVX__
@@ -32,6 +26,8 @@
 
 #include "linalg.h"
 #include "helpers.h"
+#include "shader.h"
+
 #include <unistd.h>
 
 
@@ -97,6 +93,7 @@ typedef struct Stone {
   float spin;
 
   int dead;
+  int hops;
 } Stone;
 
 
@@ -159,7 +156,6 @@ float cube_model[] = {
     -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
 };
 
-//float cube_model[720];
 
 Camera cam = {
   .speed  = 0.1f,
@@ -189,6 +185,7 @@ Stone stone = {
   .tilt_angle = {},
   .spin_speed = 0,
   .dead = 0,
+
 };
 
 Stone init_stone = {
@@ -201,6 +198,7 @@ Stone init_stone = {
   .tilt_angle = {},
   .spin_speed = 12.0f,
 
+  .hops = 0,
   .dead = 0,
 };
 
@@ -224,9 +222,8 @@ int main(void) {
 
   global.memory = malloc(4*1024*1024);
   //  stone = init_stone;
- 
 
-  printf("%p\n", global.memory);
+  //printf("%p\n", global.memory);
   
   // Load our stone model
   /*
@@ -274,14 +271,25 @@ int main(void) {
   glEnable(GL_DEPTH_TEST);
 
   
-  // Lag shader
-  int shader_program = createShader("shaders/shader.fs",     "shaders/shader.vs");
-  int lc_shader      = createShader("shaders/light_cube.fs", "shaders/light_cube.vs");
+  Shader main_shader = {
+    .name   = "main_shader",
+    .f_path = "shaders/shader.fs",
+    .v_path = "shaders/shader.vs",
+  };
 
-  if (!shader_program || !lc_shader) {
-    return -1;
-  }
+  Shader light_shader = {
+    .name   = "light_shader",
+    .f_path = "shaders/light_cube.fs",
+    .v_path = "shaders/light_cube.vs",
+  };
   
+  if (!compileShader(&main_shader,  true)) exit(-1); // 1 betyr her at den skal printe debug data
+  if (!compileShader(&light_shader, true)) exit(-1);
+
+
+  int hotload_result = hotloadShader(&main_shader);
+   
+   
   int texture = loadTexture("resources/wall.jpg");
   if (!texture) {
     return -1;
@@ -330,8 +338,15 @@ int main(void) {
   //glfwSwapInterval(0.0f);
   //vec3 speed      = {12.0f, 0.5f, 0.0f};
   //vec3 acc        = {0.0f, -9.81f, 0.0f};
+
+  
+  int frame_count = 0;
   while (!glfwWindowShouldClose(window)) {
-    
+    if (frame_count % 60 == 0) {
+      hotloadShader(&main_shader);
+    }
+
+    frame_count++;
     //
     // Calculate some time!
     //
@@ -366,7 +381,7 @@ int main(void) {
       // @FORBEDRING - ønsker å legge til friksjon langs horsintalen også... Dette kan skje både i luften (luftmotsatnd) og ved kontakt med vannet her..
       
       if (stone.pos[1] < 0) {
-        
+        stone.hops  += 1;
         stone.pos[1] = 0;
         
         // Friksjonen avhenger ved vinkelen steinen treffer vannet ved, i forhold til horisontalen. Denne går mellom 0 og 1.56, og vi vil skalerer disse verdiene til å gå mellom 1 og 0, hvor 1 bevarer all fart og 0 ikke bevarer noe fart. -bl 14.02.2020
@@ -382,8 +397,8 @@ int main(void) {
         normalizeV3(xz_dir); // @USIKKER tror man må normalisere??? Vet ikke
         float theta = angleV3(stone.speed, xz_dir); // Finn vinkelen til kastet langs xz-komponenten
 
-        printf("deg: %f\n", theta * 180 / 3.1415);
-        printf("fri: %f\n", fabs(theta-0.349066f)*4.0f);
+        //printf("deg: %f\n", theta * 180 / 3.1415);
+        //printf("fri: %f\n", fabs(theta-0.349066f)*4.0f);
         // float theta = -atan(stone.speed[1]/stone.speed[0]) / 1.56f; // Den gamle måten å regne ut vinkel.. Tror denne stemte?
 
         float friction = (1.0f - min(fabs(0.349-theta)*5.0f, 1.0f))*0.9f;
@@ -395,8 +410,12 @@ int main(void) {
       }
      
       // Når farten er liten nok bare slutter vi å simuler steinen.
-      if (lenV3(stone.speed) < 0.2f) stone.dead = 1;
+      if (lenV3(stone.speed) < 0.5f) {
+        stone.dead = 1;
+        //printf("Hops: %i\n", stone.hops);
+      }
     }
+    
     
     
     //
@@ -407,23 +426,23 @@ int main(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     
-    glUseProgram(shader_program);
+    glUseProgram(main_shader.id);
     glBindVertexArray(stoneVAO);
     
     //setInt(shader_program, "texture0", 0);
-    setVec3(shader_program, "view_color",   cam.pos);
-    setVec3(shader_program, "object_color", stone.color);
-    setVec3(shader_program, "light_color",  light_cube.color);
-    setVec3(shader_program, "light_pos",    light_cube.pos);    
+    setVec3(main_shader.id, "view_color",   cam.pos);
+    setVec3(main_shader.id, "object_color", stone.color);
+    setVec3(main_shader.id, "light_color",  light_cube.color);
+    setVec3(main_shader.id, "light_pos",    light_cube.pos);    
     
     // Calculate perspective
     perspective(cam.fov, aspect_ratio, 0.1f, 100.0f, proj);
-    setMat4(shader_program, "proj", proj);
+    setMat4(main_shader.id, "proj", proj);
 
     // Load in the vectors that are used to make the lookAt-matrix
-    setVec3(shader_program, "cam_pos",   cam.pos);
-    setVec3(shader_program, "cam_front", cam.front);
-    setVec3(shader_program, "cam_up",    cam.up);
+    setVec3(main_shader.id, "cam_pos",   cam.pos);
+    setVec3(main_shader.id, "cam_front", cam.front);
+    setVec3(main_shader.id, "cam_up",    cam.up);
 
     // Transler og tegn første kube
 
@@ -445,26 +464,26 @@ int main(void) {
     rotateY(scale, stone.spin, model); // Roter 'scale' med 'stone.spin' radianer om y-aksen, og lagre resultatet i 'model'
     mkTranslation(model, stone.pos);   // Transler 'model' til stone.pos
 
-    setMat4(shader_program, "model", model);
+    setMat4(main_shader.id, "model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
 
     //
     // Tegn lys-kube
-    glUseProgram(lc_shader);
+    glUseProgram(light_shader.id);
     glBindVertexArray(lightVAO);
 
-    setVec3(lc_shader, "light_color",  light_cube.color);
+    setVec3(light_shader.id, "light_color",  light_cube.color);
     
     
     // Calculate perspective
     perspective(cam.fov, aspect_ratio, 0.1f, 100.0f, proj);
-    setMat4(lc_shader, "proj", proj);
+    setMat4(light_shader.id, "proj", proj);
 
     // Load in the vectors that are used to make the lookAt-matrix
-    setVec3(lc_shader, "cam_pos",   cam.pos);
-    setVec3(lc_shader, "cam_front", cam.front);
-    setVec3(lc_shader, "cam_up",    cam.up);
+    setVec3(light_shader.id, "cam_pos",   cam.pos);
+    setVec3(light_shader.id, "cam_front", cam.front);
+    setVec3(light_shader.id, "cam_up",    cam.up);
     // Transler og tegn andre kube. Denne skaleres også ned med matrisen under.
     clearM4(model);
     initIdM4(model);
@@ -474,7 +493,7 @@ int main(void) {
         
     mkTranslation(model, light_cube.pos);
     
-    setMat4(lc_shader, "model", model);
+    setMat4(light_shader.id, "model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
 
@@ -579,7 +598,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
       addV3(stone.pos, cam.front); // @FORBEDRING - Dette var et forsøk på å flytte den nye stenen lengre fram... Det vi vil er at stenen skal holdes 'foran' oss, og at kamera vender bakover mens man lader opp til kast... Får se mer på dette senere :)
 
       copyV3(cam.front, stone.speed);
-      scaleV3(stone.speed, 12.0f);
+      scaleV3(stone.speed, 14.0f);
     }
 
 }

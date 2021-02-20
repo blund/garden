@@ -21,5 +21,8 @@ FLAGS="-g"
 SANITIZE="-fsanitize=address -fsanitize-blacklist=support/blacklist.txt"
 LINKER_FLAGS="-Iinclude -lGL -lglfw -ldl -lm"
 
+echo
 echo "Kompilerer med ${CC}"
+echo
+
 $CC $FILES $FLAGS $LINKER_FLAGS  && ./a.out
