@@ -1,28 +1,33 @@
 #!/bin/sh
 
-
 CC="tcc"
-while getopts "c:" arg; do
+FLAGS="-o build/garden -g"
+
+MESSAGES=""
+
+while getopts "c:o" arg; do
     case $arg in
         c)
             CC=${OPTARG}
             [[ ! $CC =~ clang|gcc ]] && CC=tcc
             ;;
+        o)
+            FLAGS="${FLAGS} -O2"
+            ;;
         *)
-            echo "bad argument!"
+            echo "Fikk et ulovlig argument: ${OPTARG}!"
             ;;
     esac
 done
 shift $((OPTIND-1))
 
-
-FILES="game.c glad.c linalg.c helpers.c mu/renderer.c mu/microui.c"
-FLAGS="-g"
-SANITIZE="-fsanitize=address -fsanitize-blacklist=support/blacklist.txt"
-LINKER_FLAGS="-Iinclude -lGL -lglfw -ldl -lm"
-
 echo
 echo "Kompilerer med ${CC}"
 echo
 
-$CC $FILES $FLAGS $LINKER_FLAGS  && ./a.out
+FILES="platform_code.c shader.c linalg.c helpers.c include/glad/glad.c"
+SANITIZE="-fsanitize=address -fsanitize-blacklist=support/blacklist.txt"
+LINKER_FLAGS="-Iinclude -lGL -lglfw -ldl -lm"
+
+
+$CC $FILES $FLAGS $LINKER_FLAGS && ./build/garden
