@@ -1,0 +1,35 @@
+BUGS:
+* Om imgui:
+   https://silverspaceship.com/inner/imgui/
+   https://www.google.com/search?client=firefox-b-d&q=eskil+steenberg
+
+* Jonathan Blow sin "blog"?
+   http://the-witness.net/news/
+   http://number-none.com/blow/
+
+* Om hotload reloading:
+   https://www.danielecarbone.com/hot-code-reloading/
+
+* Howto for hot-reloading av c-kode:
+   Filen som skal linkes dynamisk:
+    gcc -shared -o lib.so file_to_load.c
+
+   Når man skal kompilere filen:
+    gcc -rdynamic -o progdl progdl.c -ldl  
+ 
+   For å laste inn funksjoner fra filen må man allokere minne til funksjonspekere:
+    int (*add)(int, int);
+
+   Laste inn biblioteket:
+    lib_handle = dlopen("./lib.so", RTLD_LAZY);
+ 
+   Og sette hva funksjonen peker på slik
+    add = dlsym(lib_handle, "add");
+
+   Og så kan man kalle funksjonen normalt!
+    int result = add(2,3); 
+
+   Til slutt er det høffelig 
+    dlclose(lib_handle);
+
+   Å åpne og lukke slik garanterer at vi ikke skriver over når vi trenger funksjonene.... Men er litt usikker

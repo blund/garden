@@ -5,7 +5,7 @@ FLAGS="-o build/garden -g"
 
 MESSAGES=""
 
-while getopts "c:o" arg; do
+while getopts "c:or" arg; do
     case $arg in
         c)
             CC=${OPTARG}
@@ -14,7 +14,10 @@ while getopts "c:o" arg; do
         o)
             FLAGS="${FLAGS} -O2"
             ;;
-        *)
+        r)
+	    RUN="./build/garden"
+            ;;
+	*)
             echo "Fikk et ulovlig argument: ${OPTARG}!"
             ;;
     esac
@@ -30,4 +33,4 @@ SANITIZE="-fsanitize=address -fsanitize-blacklist=support/blacklist.txt"
 LINKER_FLAGS="-Iinclude -lGL -lglfw -ldl -lm"
 
 
-$CC $FILES $FLAGS $LINKER_FLAGS && ./build/garden
+$CC $FILES $FLAGS $LINKER_FLAGS && $RUN # ./build/garden
