@@ -7,7 +7,6 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-//#include <mu/renderer.h>
 
 #include <math.h>
 #include <time.h>
@@ -271,6 +270,10 @@ int main(void) {
   glEnable(GL_DEPTH_TEST);
 
   
+  //
+  // Last inn shadere
+  //
+  
   Shader main_shader = {
     .name   = "main_shader",
     .f_path = "shaders/shader.fs",
@@ -286,10 +289,12 @@ int main(void) {
   if (!compileShader(&main_shader,  true)) exit(-1); // 1 betyr her at den skal printe debug data
   if (!compileShader(&light_shader, true)) exit(-1);
 
+  
 
-  int hotload_result = hotloadShader(&main_shader);
-   
-   
+  //
+  // Last inn tekstur
+  //
+  
   int texture = loadTexture("resources/wall.jpg");
   if (!texture) {
     return -1;

@@ -1,5 +1,6 @@
 #version 330 core
 
+
 // https://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl
 
 layout (location = 0) in vec3 v_pos;
