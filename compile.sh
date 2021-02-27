@@ -2,7 +2,7 @@
 
 CC="tcc"
 FLAGS="-o build/garden -g"
-
+RUN="./build/garden"
 MESSAGES=""
 
 while getopts "c:or" arg; do
@@ -15,7 +15,7 @@ while getopts "c:or" arg; do
             FLAGS="${FLAGS} -O2"
             ;;
         r)
-	    RUN="./build/garden"
+	    RUN=""
             ;;
 	*)
             echo "Fikk et ulovlig argument: ${OPTARG}!"

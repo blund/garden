@@ -14,8 +14,6 @@
 #include <stdint.h>
 
 
-
-
 #ifndef __AVX__
   #define STBI_NO_SIMD
 #endif
