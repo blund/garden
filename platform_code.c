@@ -50,7 +50,7 @@ typedef struct Globals {
   Game_Mode game_mode;
   float     dt;
   int       reset_mouse_pos; // Brukes for å unngå "hopping" i spillet eller når vi går inn/ut fra meny. Se for eksemel ESCAPE-delen av key_callback
-  void *    memory;
+  int       throw;
 } Globals;
 
 typedef struct Camera {
@@ -151,6 +151,7 @@ Globals global = {
   .reset_mouse_pos = 1,
   .game_mode = GAME,
   .dt = 0,
+  .throw = 0,
 };
 
 Camera cam = {
@@ -198,12 +199,14 @@ Light_Cube light_cube = {
   .pos   = {20.0f, 8.0f, 20.0f},
   .color = {1.0f, 1.0f, 1.0f}
 };
-  
 
+
+
+//void *memory[2*1024*1024];
 
 int main(void) {
 
-  global.memory = malloc(4*1024*1024);
+  //global.memory = malloc(4*1024*1024);
   
 /*
   From LearnOpenGl:
@@ -326,7 +329,31 @@ int main(void) {
 
     // updateAndRender();
 
-    
+    if (global.throw) {
+      // @FORBEDRING - Basically må vi bestemme oss for hvordan vi skal gjennomføre kastet... Steinen skal ideelt sett ha en vinkel på 20 grader. Denne må være avhengig av hvor vi ser, men kanskje ikke direkte. Kanskje den kan være dobbelte av vår vinkel fra horisontalen... Vi får se!
+      /*
+        vec3 xz_dir = {cam.front[0], 0.0f, cam.front[2]}; // Isoler xz-komponenten
+        normalizeV3(xz_dir); // @USIKKER tror man må normalisere??? Vet ikke
+        float theta = angleV3(cam.front, xz_dir); // Finn vinkelen til kastet
+        
+        theta *= copysign(1.0f, cam.front[1]); // Gjenskap fortegn
+        
+        printf("%f\n", theta*180.0f/3.1415f);
+      */
+      
+      // @OPPRYDDING - Dette må flyttes til simulasjons-koden.
+      // @FORBEDRING - Vi vil at tiden man holder inne knappen skal øke kastets fart... Dette krever at vi lagrer tiden når knappen ble trykket, og når knappen slippes lager vi en delta som skaleres (logaritmisk?) slik at det skaleres om en toppverdi.
+      
+      stone = init_stone;
+      stone.pos[0] = cam.pos[0]; // Kopier bare x- og z-koordinater, høyden vil være fast i 'kaste-høyde'
+      stone.pos[2] = cam.pos[2]; //
+
+      addV3(stone.pos, cam.front); // @FORBEDRING - Dette var et forsøk på å flytte den nye stenen lengre fram... Det vi vil er at stenen skal holdes 'foran' oss, og at kamera vender bakover mens man lader opp til kast... Får se mer på dette senere :)
+
+      copyV3(cam.front, stone.speed);
+      scaleV3(stone.speed, 14.0f);
+      global.throw = 0;
+    }
        
     //
     // Simulate stone
@@ -585,31 +612,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         global.reset_mouse_pos = 1;
       }
     }
-
     
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
-      // @FORBEDRING - Basically må vi bestemme oss for hvordan vi skal gjennomføre kastet... Steinen skal ideelt sett ha en vinkel på 20 grader. Denne må være avhengig av hvor vi ser, men kanskje ikke direkte. Kanskje den kan være dobbelte av vår vinkel fra horisontalen... Vi får se!
-      /*
-        vec3 xz_dir = {cam.front[0], 0.0f, cam.front[2]}; // Isoler xz-komponenten
-        normalizeV3(xz_dir); // @USIKKER tror man må normalisere??? Vet ikke
-        float theta = angleV3(cam.front, xz_dir); // Finn vinkelen til kastet
-        
-        theta *= copysign(1.0f, cam.front[1]); // Gjenskap fortegn
-        
-        printf("%f\n", theta*180.0f/3.1415f);
-      */
-      
-      // @OPPRYDDING - Dette må flyttes til simulasjons-koden.
-      // @FORBEDRING - Vi vil at tiden man holder inne knappen skal øke kastets fart... Dette krever at vi lagrer tiden når knappen ble trykket, og når knappen slippes lager vi en delta som skaleres (logaritmisk?) slik at det skaleres om en toppverdi.
-      
-      stone = init_stone;
-      stone.pos[0] = cam.pos[0]; // Kopier bare x- og z-koordinater, høyden vil være fast i 'kaste-høyde'
-      stone.pos[2] = cam.pos[2]; //
-
-      addV3(stone.pos, cam.front); // @FORBEDRING - Dette var et forsøk på å flytte den nye stenen lengre fram... Det vi vil er at stenen skal holdes 'foran' oss, og at kamera vender bakover mens man lader opp til kast... Får se mer på dette senere :)
-
-      copyV3(cam.front, stone.speed);
-      scaleV3(stone.speed, 14.0f);
+      global.throw = 1;
     }
 
 }
