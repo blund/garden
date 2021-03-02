@@ -1,6 +1,6 @@
 # garden
 
-> In Zen, they say there are only two things: You sit and you sweep the garden.
+> In Zen, they say there are only two things: You sit and, you sweep the garden.
 >
 > -- <cite>Jack Kornfield</cite>
 
