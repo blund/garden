@@ -9,7 +9,9 @@ A work in progress game and game engine.
 
 ### Running
 
-Will only run on linux at the moment. You will have to install glfw3 to compile.
+This project only runs on linux at the moment. You will have to install glfw3 to compile.
 
 To run, simply type
-```./compile```
+```./compile.sh```
+
+Uses ```tcc``` by default, but other C compilers can be selected by passing either ```-c clang``` or ```-c gcc``` as an argument
