@@ -2,6 +2,6 @@
 
 > In Zen, they say there are only two things: You sit and you sweep the garden.
 >
-> - <cite>Jack Kornfield</cite>
+> -- <cite>Jack Kornfield</cite>
 
 A work in progress game and game engine.
