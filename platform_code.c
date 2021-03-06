@@ -28,8 +28,10 @@
 #include "helpers.h"
 #include "shader.h"
 
-const unsigned int SCR_WIDTH  = 800;
-const unsigned int SCR_HEIGHT = 600;
+
+const unsigned int SCR_WIDTH  = 1200;
+const unsigned int SCR_HEIGHT = 800;
+
 
 typedef enum Game_Mode {
   GAME,
@@ -42,8 +44,13 @@ typedef struct Controller {
   u8 left;
   u8 right;
 
+  u8 shift;
+
   u8 esc;
   u8 q;
+
+  u8 throw;
+
 } Controller;
 
 typedef struct Globals {
@@ -95,14 +102,14 @@ typedef struct Light_Cube {
 
 
 
-void process_keyboard(GLFWwindow *window);
-void mouse_callback(GLFWwindow* window, double x_pos, double y_pos);
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+//void process_keyboard(GLFWwindow *window);
+void mouseCallback(GLFWwindow* window, double x_pos, double y_pos);
+void mouseButtonCallback(GLFWwindow* window, int key, int scancode, int);
+void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void framebufferSizeCallback(GLFWwindow *window, int width, int height);
 
 
-
-// controller ctrl = {};
+Controller controller = {};
 float cube_model[] = {
     -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
      0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
@@ -151,7 +158,6 @@ Globals global = {
   .reset_mouse_pos = 1,
   .game_mode = GAME,
   .dt = 0,
-  .throw = 0,
 };
 
 Camera cam = {
@@ -226,12 +232,13 @@ int main(void) {
   }
   
   glfwMakeContextCurrent(window);
-  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+  glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
 
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
   
-  glfwSetCursorPosCallback(window, mouse_callback);
-  glfwSetKeyCallback(window, key_callback);
+  glfwSetCursorPosCallback(window, mouseCallback);
+  glfwSetKeyCallback(window, keyboardCallback);
+  glfwSetMouseButtonCallback(window, mouseButtonCallback);
 
 
   
@@ -317,8 +324,9 @@ int main(void) {
     if (frame_count % 60 == 0) {
       hotloadShader(&main_shader);
     }
-
     frame_count++;
+
+
     //
     // Calculate some time!
     //
@@ -327,9 +335,51 @@ int main(void) {
     global.dt    = current_time - last_time;
     last_time    = current_time;
 
-    // updateAndRender();
+    //
+    // Oppdater bevegelse
+    //
+    float speed = 7.5f * global.dt;
+    float y_pos = cam.pos[1]; // Lagre z-posisjonen for å sette den igjen etterpå. Låser karakteren langs y-aksen.
 
-    if (global.throw) {
+    if (controller.shift) speed *= 4; 
+
+    vec3 tmp; // Denne kan brukes uten å intialiseres siden vi alltid kopierer en verdi til den   
+    if (controller.up) {
+      copyV3(cam.front, tmp);
+      scaleV3(tmp, speed);
+      addV3(cam.pos, tmp);
+    }
+    
+    if (controller.down) {
+      copyV3(cam.front, tmp);
+      scaleV3(tmp, speed);
+      subV3(cam.pos, tmp);
+    }
+    
+    if (controller.left) {
+      crossV3(cam.front, cam.up, tmp);
+      normalizeV3(tmp);
+      scaleV3(tmp, speed);
+      subV3(cam.pos, tmp);
+    }
+
+    if (controller.right) {
+      crossV3(cam.front, cam.up, tmp);
+      normalizeV3(tmp);
+      scaleV3(tmp, speed);
+      addV3(cam.pos, tmp);
+    }
+
+    cam.pos[1] = y_pos;
+
+
+
+
+
+
+
+    
+    if (controller.throw) {
       // @FORBEDRING - Basically må vi bestemme oss for hvordan vi skal gjennomføre kastet... Steinen skal ideelt sett ha en vinkel på 20 grader. Denne må være avhengig av hvor vi ser, men kanskje ikke direkte. Kanskje den kan være dobbelte av vår vinkel fra horisontalen... Vi får se!
       /*
         vec3 xz_dir = {cam.front[0], 0.0f, cam.front[2]}; // Isoler xz-komponenten
@@ -352,7 +402,7 @@ int main(void) {
 
       copyV3(cam.front, stone.speed);
       scaleV3(stone.speed, 14.0f);
-      global.throw = 0;
+      controller.throw = 0;
     }
        
     //
@@ -547,12 +597,11 @@ int main(void) {
 
 
 
-
-void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+void framebufferSizeCallback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
 }
 
-void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
+void mouseCallback(GLFWwindow* window, double x_pos, double y_pos) {
 
   if (global.game_mode == MENU) {
     // We do not want game movement in the menu...
@@ -594,12 +643,20 @@ void mouse_callback(GLFWwindow* window, double x_pos, double y_pos) {
   normalizeV3(cam.front);
 }
 
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    controller.throw = 1;
+    //popup_menu();
+}
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+
+void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    if (key == GLFW_KEY_Q && action == GLFW_PRESS)
       glfwSetWindowShouldClose(window, 1);
 
+
+    
     // @URYDDIG liker ikke at dette er gjort i en callback..    
     // ... Vil heller gjøre dette i hoved-loopen inntil videre, slik at vi ikke sprer viktig kode for mye utover. Kan kanskje sette noen globale variabler som leses.
     if (key ==  GLFW_KEY_M && action == GLFW_PRESS) {
@@ -614,131 +671,25 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
     
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
-      global.throw = 1;
+      controller.throw = 1;
     }
-
-}
-
-
-void process_keyboard(GLFWwindow *window) {
-  assert(0); // We do not want to end up here.
-
-  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-    glfwSetWindowShouldClose(window, 1);
-
-  if ((glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)) {
-    if (global.game_mode == GAME) {
-      printf("Vi er nå i menyen!\n");
-      global.game_mode = MENU;
-    }
-    if (global.game_mode == MENU) {
-      printf("Vi er nå i spillet!\n");
-      global.game_mode = GAME;
-    }
-    //global.game_mode_changed = 1;
-  }
-  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_RELEASE) {
-    //printf("Kommer vi hit?\n");
-    //global.game_mode_changed = 0;
-  }
-                                                           
-  if (global.game_mode == MENU) {
-    return;
-  }
-  
-  
-  if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-    cam.fov -= 0.01f;
-  
-  if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-    cam.fov += 0.01f;
-  
+    
+    
+    if (key == GLFW_KEY_1 && action == GLFW_PRESS)
+      cam.fov -= 0.01f;
+    
+    if (key == GLFW_KEY_2 && action == GLFW_PRESS)
+      cam.fov += 0.01f;
+    
   if (cam.fov < 0.01f)
-    cam.fov = 0.01f;
-
-
-  float speed = 7.5f * global.dt;
-  float y_pos = cam.pos[1]; // Lagre z-posisjonen for å sette den igjen etterpå. Låser karakteren langs y-aksen.
-
-
-  vec3 tmp; // Denne kan brukes uten å intialiseres siden vi alltid kopierer en verdi til den   
-  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-    copyV3(cam.front, tmp);
-    scaleV3(tmp, speed);
-    addV3(cam.pos, tmp);
-  }
-
-  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-    copyV3(cam.front, tmp);
-    scaleV3(tmp, speed);
-    subV3(cam.pos, tmp);
-  }
-
-  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-    crossV3(cam.front, cam.up, tmp);
-    normalizeV3(tmp);
-    scaleV3(tmp, speed);
-    subV3(cam.pos, tmp);
-  }
-
-  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-    crossV3(cam.front, cam.up, tmp);
-    normalizeV3(tmp);
-    scaleV3(tmp, speed);
-    addV3(cam.pos, tmp);
-   }
-
-  cam.pos[1] = y_pos;
-
-  if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
-    copyV3(cam.up, tmp);
-    normalizeV3(tmp);
-    scaleV3(tmp, speed);
-    addV3(cam.pos, tmp);
-   }
+    cam.fov = 0.01f;    
   
-  if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-    copyV3(cam.up, tmp);
-    normalizeV3(tmp);
-    scaleV3(tmp, speed);
-    subV3(cam.pos, tmp);
-   }
+  if (key == GLFW_KEY_W) controller.up    = action; // 0 for release, 1 for press
+  if (key == GLFW_KEY_S) controller.down  = action; // 0 for release, 1 for press
+  if (key == GLFW_KEY_D) controller.right = action; // 0 for release, 1 for press
+  if (key == GLFW_KEY_A) controller.left  = action; // 0 for release, 1 for press
 
-  // Reset steinen
-  if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-    stone = (Stone){
-      .pos   = {-2.0f, 1.8f, 2.0f},
-      .color = {1.0f, 0.5f, 0.31f},
-      .speed = {2.0f, 0.0f, 0.0f},
-      .tilt_angle = {},
-      .spin_speed = 12.0f,
-    };
-  }
+  controller.shift = mods & GLFW_MOD_SHIFT;
+    
 
-  // Bevegelser for kuben
-  if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-    copyV3(cam.front, tmp);
-    scaleV3(tmp, speed);
-    addV3(stone.pos, tmp);
-  }
-
-  if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-    copyV3(cam.front, tmp);
-    scaleV3(tmp, speed);
-    subV3(stone.pos, tmp);
-  }
-
-  if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-    crossV3(cam.front, cam.up, tmp);
-    normalizeV3(tmp);
-    scaleV3(tmp, speed);
-    subV3(stone.pos, tmp);
-  }
-
-  if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-    crossV3(cam.front, cam.up, tmp);
-    normalizeV3(tmp);
-    scaleV3(tmp, speed);
-    addV3(stone.pos, tmp);
-   }  
 }
