@@ -13,6 +13,19 @@
 #include "linalg.h"
 
 
+
+
+
+/*
+
+  @TODO - bytt ut rotateX/Y/Z med X2/Y2-versjonene, som er lettere å bruke siden dette så å si er gratis kanskje :):)
+
+
+
+ */
+
+
+
 // http://scipp.ucsc.edu/~haber/ph216/rotation_12.pdf
 // Rotasjon om vilkårlig akse!!
 
@@ -23,6 +36,84 @@
   (mset og mgdet bruker rad-kolonne-indeksering)
 
  */
+
+//
+// Quaternion
+//
+
+
+
+void addQt (Qt *a, Qt *b) {
+  for (int i = 0; i < 4; i++) {
+    a->array[i] += b->array[i];
+  }
+}
+
+void subQt (Qt *a, Qt *b) {
+  for (int i = 0; i < 4; i++) {
+    a->array[i] -= b->array[i];
+  }
+}
+
+void mulQt (Qt *a_, Qt *b) {
+  // https://www.dgep.com/understanding-quaternions/#Quaternions
+  Qt a = {a_->s, a_->x, a_->y, a_->z};
+  a_->s = (a.s*b->s) - (a.x*b->x) - (a.y*b->y) - (a.z*b->z);
+  a_->x = (a.s*b->x) + (b->s*a.x) + (a.y*b->z) - (b->y*a.z);
+  a_->y = (a.s*b->y) + (b->s*a.y) + (a.z*b->x) - (b->z*a.x);
+  a_->z = (a.s*b->z) + (b->s*a.z) + (a.x*b->y) - (b->x*a.y);
+}
+
+
+void mulV3Qt (vec3 v, Qt *q) {
+  // https://math.stackexchange.com/questions/40164/how-do-you-rotate-a-vector-by-a-unit-quaternion
+  // vec3 test = {1.0f, 0.0f, 0.0f};
+  // Qt   rot  = {0.707f, 0.0f, 0.707f, 0.0f};
+
+  // mulV3Qt(test, &rot);
+  // normalizeV3(test);
+  // printV3(test);
+  
+  Qt rot  = {q->s, q->x, q->y, q->z};
+  Qt vec  = {0.0f, v[0], v[1], v[2]};
+  Qt rot_ = {q->s, -q->x, -q->y, -q->z};
+
+  
+  mulQt(&rot, &vec);
+  mulQt(&rot, &rot_);
+
+  v[0] = rot.x; v[1] = rot.y; v[2] = rot.z;
+}
+
+
+void scaleQt (Qt *a, float scale) {
+  for (int i = 0; i < 4; i++) {
+    a->array[i] *= scale;
+  }
+}
+
+
+void normalizeQt (Qt *q) {
+  //
+
+  float norm = sqrt(pow(q->array[0], 2) + pow(q->array[1],2) + pow(q->array[2],2) + pow(q->array[3],2));
+
+  for (int i = 0; i < 4; i++) {
+    q->array[i] /= norm;
+  }
+
+}
+
+void printQt(Qt a) {
+  printf("Qt: %f %f %f %f\n", a.s, a.x, a.y, a.z);
+}
+
+
+
+//
+// Matriser
+//
+
 
 void inline mset(mat4 m, int row, int col, float val) {
   m[row + 4*col] = val;
@@ -71,6 +162,7 @@ void copyM4(mat4 from, mat4 to) {
     to[i] = from[i];
   }
 }
+
 /*
 void mulM4(mat4 A, mat4 B, mat4 result) {
   for (int i = 0; i < 4; i++) {
@@ -124,9 +216,24 @@ void perspective(float fov, float aspect, float near, float far, mat4 res) {
 }
 
 
-
+void mulM4_(mat4 m1, mat4 m2) {
+  mat4 tmp;
+  copyM4(m1, tmp);
+  
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      m1[j + i * 4] = 0;
+      for (int k = 0; k < 4; k++) {
+        m1[j + i * 4] += tmp[k + i * 4] * m2[j + k * 4];
+      }
+    }
+  }
+}
 
 void mulM4(mat4 m1, mat4 m2, mat4 res) {
+  
+
+  
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
       res[j + i * 4] = 0;
@@ -159,6 +266,17 @@ void rotateX(mat4 m, float deg, mat4 res) {
   mulM4(rot, m, res);
 }
 
+void rotateX2(mat4 m, float deg) {
+  float rot[16] = {
+    1.0f,   0.0f,     0.0f,      0.0f,
+    0.0f,   cos(deg), sin(deg),  0.0f,
+    0.0f,  -sin(deg), cos(deg),  0.0f, 
+    0.0f,   0.0f,     0.0f,      1.0f,
+  };
+
+  mulM4_(m, rot);
+}
+
 void rotateY(mat4 m, float deg, mat4 res) {
   float rot[16] = {
     cos(deg),  0.0f, sin(deg),  0.0f,
@@ -168,6 +286,29 @@ void rotateY(mat4 m, float deg, mat4 res) {
   };
 
   mulM4(rot, m, res);
+}
+
+void rotateY2(mat4 m, float deg) {
+  float rot[16] = {
+    cos(deg),  0.0f, sin(deg),  0.0f,
+    0.0f,      1.0f, 0.0f,      0.0f,
+    -sin(deg), 0.0f, cos(deg),  0.0f, 
+    0.0f,      0.0f, 0.0f,      1.0f,
+  };
+  
+  mulM4_(m, rot);
+}
+
+void scaleM4(mat4 m, vec3 v) {
+  mat4 tmp;
+  copyM4(m, tmp);
+  
+  mat4 scale = {};
+  mset(scale, 0, 0, v[0]);
+  mset(scale, 1, 1, v[1]);
+  mset(scale, 2, 2, v[2]);
+  mset(scale, 3, 3, 1.0f);
+  mulM4(tmp, scale, m);
 }
 
 
@@ -218,7 +359,9 @@ float dotV3(vec3 u, vec3 v) {
 float angleV3(vec3 u, vec3 v) {
   float len_u = sqrt(pow(u[0],2) + pow(u[1],2) + pow(u[2],2));
   float len_v = sqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2));
-  return acos(dotV3(u, v)/(len_u * len_v));  
+
+  float cos_theta = dotV3(u, v)/(len_u * len_v);
+  return acos(cos_theta);  
 }
 
 void scaleV3(vec3 v, float f) {

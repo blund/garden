@@ -29,8 +29,8 @@
 #include "shader.h"
 
 
-const unsigned int SCR_WIDTH  = 1200;
-const unsigned int SCR_HEIGHT = 800;
+const unsigned int SCR_WIDTH  = 900;
+const unsigned int SCR_HEIGHT = 600;
 
 
 typedef enum Game_Mode {
@@ -45,6 +45,7 @@ typedef struct Controller {
   u8 right;
 
   u8 shift;
+  u8 retrieve;
 
   u8 esc;
   u8 q;
@@ -109,7 +110,8 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
 void framebufferSizeCallback(GLFWwindow *window, int width, int height);
 
 
-Controller controller = {};
+Controller controller = { .retrieve = 1 };
+
 float cube_model[] = {
     -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
      0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f, 
@@ -183,16 +185,16 @@ Stone stone = {
 };
 
 Stone water = {
-  .pos   = {0.0f, 0.0f, 0.0f},
+  .pos   = {0.0f,   0.0f,  0.0f},
   .color = {0.015f, 0.48f, 0.94f},
 };
 
 Stone init_stone = {
-  .pos   = {-2.0f, 1.4f,   2.0f},
-  .speed = {4.0f,  0.5f,  0.0f},
+  .pos   = {-2.0f,  1.4f,  2.0f},
+  .speed = {4.0f,   0.5f,  0.0f},
   .acc   = {0.0f,  -9.81f, 0.0f},
   
-  .color = {.2f,  0.2f,   0.2f},
+  .color = {.2f,  0.2f, 0.2f},
   
   .tilt_angle = {},
   .spin_speed = 12.0f,
@@ -212,6 +214,14 @@ Light_Cube light_cube = {
 
 int main(void) {
 
+  vec3 test = {1.0f, 0.0f, 0.0f};
+  Qt   rot  = {0.707f, 0.0f, 0.707f, 0.0f};
+
+  mulV3Qt(test, &rot);
+  printV3(test);
+
+
+  
   //global.memory = malloc(4*1024*1024);
   
 /*
@@ -372,14 +382,27 @@ int main(void) {
 
     cam.pos[1] = y_pos;
 
+          
+    if (controller.retrieve) {
 
-
-
-
-
-
+      
+      vec3 displacement;
+      copyV3(cam.front, displacement);
+      scaleV3(displacement, 3.0f);
+      
+      stone = init_stone;
+      stone.pos[0] = cam.pos[0]; // Kopier bare x- og z-koordinater, høyden vil være fast i 'kaste-høyde'
+      stone.pos[2] = cam.pos[2]; //
     
-    if (controller.throw) {
+      addV3(stone.pos, displacement);
+      stone.pos[1] -= 0.05f;
+      stone.dead = 1;
+    }
+    
+    if (controller.throw && controller.retrieve) {
+      controller.retrieve = 0;
+      controller.throw    = 0;
+      stone.dead          = 0;
       // @FORBEDRING - Basically må vi bestemme oss for hvordan vi skal gjennomføre kastet... Steinen skal ideelt sett ha en vinkel på 20 grader. Denne må være avhengig av hvor vi ser, men kanskje ikke direkte. Kanskje den kan være dobbelte av vår vinkel fra horisontalen... Vi får se!
       /*
         vec3 xz_dir = {cam.front[0], 0.0f, cam.front[2]}; // Isoler xz-komponenten
@@ -390,19 +413,26 @@ int main(void) {
         
         printf("%f\n", theta*180.0f/3.1415f);
       */
-      
+        
       // @OPPRYDDING - Dette må flyttes til simulasjons-koden.
       // @FORBEDRING - Vi vil at tiden man holder inne knappen skal øke kastets fart... Dette krever at vi lagrer tiden når knappen ble trykket, og når knappen slippes lager vi en delta som skaleres (logaritmisk?) slik at det skaleres om en toppverdi.
-      
+
+
+      /*
       stone = init_stone;
       stone.pos[0] = cam.pos[0]; // Kopier bare x- og z-koordinater, høyden vil være fast i 'kaste-høyde'
       stone.pos[2] = cam.pos[2]; //
 
-      addV3(stone.pos, cam.front); // @FORBEDRING - Dette var et forsøk på å flytte den nye stenen lengre fram... Det vi vil er at stenen skal holdes 'foran' oss, og at kamera vender bakover mens man lader opp til kast... Får se mer på dette senere :)
-
+      vec3 displacement;
+      copyV3(cam.front, displacement);
+      scaleV3(displacement, 2.0f);
+      
+      
+      addV3(stone.pos, displacement); // @FORBEDRING - Dette var et forsøk på å flytte den nye stenen lengre fram... Det vi vil er at stenen skal holdes 'foran' oss, og at kamera vender bakover mens man lader opp til kast... Får se mer på dette senere :)
+      */
       copyV3(cam.front, stone.speed);
       scaleV3(stone.speed, 14.0f);
-      controller.throw = 0;
+      stone.spin = 0;
     }
        
     //
@@ -465,11 +495,18 @@ int main(void) {
       }
     }
     
-    
-    
+        
     //
-    // Render first stone
+    // Tegn stein
     //
+
+    vec3 d = {0};
+    vec3 r = {0};
+    vec3 u = {0};
+
+
+    //const mat4 idm4;
+    //initIdM4(idm4);
     
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -486,8 +523,9 @@ int main(void) {
     
     // Calculate perspective
     perspective(cam.fov, aspect_ratio, 0.1f, 100.0f, proj);
+    //initIdM4(proj);
     setMat4(main_shader.id, "proj", proj);
-
+    
     // Load in the vectors that are used to make the lookAt-matrix
     setVec3(main_shader.id, "cam_pos",   cam.pos);
     setVec3(main_shader.id, "cam_front", cam.front);
@@ -502,20 +540,42 @@ int main(void) {
     // TODO - Vend bakover mot utkaststed.... må tenke litt på dette, må nok gjøres med en generell rotasjonsmatrise: https://en.wikipedia.org/wiki/Rotation_matrix#Nested_dimensions (ser ut som GPU-arbeid :) )
 
     clearM4(model);
-   
-    mat4 scale;
-    clearM4(scale);
-    initIdM4(scale);
-    mset(scale, 0, 0, 0.5f);
-    mset(scale, 1, 1, 0.1f);
-    mset(scale, 2, 2, 0.5f);
+    initIdM4(model);
+    
+    vec3 scale = {0.5f, 0.1f, 0.5f};
+    scaleM4(model, scale);
 
-    rotateY(scale, stone.spin, model); // Roter 'scale' med 'stone.spin' radianer om y-aksen, og lagre resultatet i 'model'
-    mkTranslation(model, stone.pos);   // Transler 'model' til stone.pos
+    vec3 xz_dir = {cam.front[0], 0.0f, cam.front[2]}; // Isoler xz-komponenten
+    normalizeV3(xz_dir); // @USIKKER tror man må normalisere??? Vet ikke
+    float theta = angleV3(cam.front, xz_dir); // Finn vinkelen til kastet
+    
+
+
+    //vec3 x_unit   = {-1.0f, 0.0f, 0.0f};
+    //float theta_a = angleV3(x_unit, xz_dir); // Finn vinkelen til kastet
+
+    vec3  z_unit  = {1.0f, 0.0f, 0.0f};
+    float theta_b = angleV3(z_unit, xz_dir); // Finn vinkelen til kastet
+
+    //printf("%f\n", theta_b);
+    
+    // float theta_ = theta_b > 3.1415f / 2.0f ? theta_b : theta_a;
+    
+    //printf("x: %f, z; %f\n", theta_a, theta_b);
+    //if (theta2 > 3.14f) theta2 += 3.14f;
+    
+    rotateY2(model, stone.spin);
+    //rotateX2(model, theta);
+
+
+        
+    //rotateY2(model, stone.spin); 
+    mkTranslation(model, stone.pos);
 
     setMat4(main_shader.id, "model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
+    
 
 
     //
@@ -671,7 +731,7 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
     }
     
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
-      controller.throw = 1;
+      controller.retrieve = 1;
     }
     
     

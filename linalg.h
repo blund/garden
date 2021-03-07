@@ -13,6 +13,26 @@ typedef struct {
 } vec3;
 */
 
+// Quaternions
+typedef struct Qt {
+  union {
+    float array[4];
+    struct {
+      float s;
+      float x;
+      float y;
+      float z;
+    };
+  };
+} Qt;
+
+void addQt (Qt *a, Qt *b);
+void subQt (Qt *a, Qt *b);
+void mulQt (Qt *a, Qt *b);
+void normalizeQt (Qt *a);
+void printQt (Qt a);
+void mulV3Qt (vec3 v, Qt *q);
+
 // Matrices
 void initIdM4(mat4 m);
 
@@ -22,13 +42,16 @@ void copyM4(mat4 from, mat4 to);
 void mset(mat4 m1, int row, int col, float val);
 float mget(mat4 m1, int row, int col);
 
+void mulM4_(mat4 m1, mat4 m2);
 void mkTranslation(mat4 m, vec3 v);
 void rotateZ(mat4 m, float deg, mat4 res);
 void rotateX(mat4 m, float deg, mat4 res);
 void rotateY(mat4 m, float deg, mat4 res);
+void rotateX2(mat4 res, float deg);
+void rotateY2(mat4 res, float deg);
 void translate(mat4 m, vec3 v, mat4 res, mat4 tmp);
 void mulM4(mat4 m1, mat4 m2, mat4 res);
-
+void scaleM4(mat4 m, vec3 v);
 
 void ortho(float left, float right, float bottom, float top,
            float near, float far, mat4 res);
