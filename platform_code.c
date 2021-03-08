@@ -533,32 +533,28 @@ int main(void) {
     //
     // Beregn rotasjon for kuben
 
-    Qt   rotation = {1.0f}; // "Real" quaternion
-       
+
     // Vend bakover
-    float pitch = 0.5 * (cam.pitch+20.0f) * 0.01745; //0.3f;
-    float angle = sin(pitch);
-    Qt rot_back = {cos(pitch), angle*0.0f, angle*0.0f, angle*1.0f}; // Siden vi roterer med {0, 1, 0} spinner den om y-aksen
-    normalizeQt(&rot_back);
-
-    // Roter med kameras retning
-    float yaw = -0.5f * cam.yaw * 0.01745329251f;
-    Qt rot_round = {cos(yaw), 0.0f, sin(yaw), 0.0f}; // Siden vi roterer med {0, 1, 0} spinner den om y-aksen
-    normalizeQt(&rot_round);
-
-    // Spinn for steinen
-    Qt spin = {cos(stone.spin/2.0f), 0.0f, sin(stone.spin/2.0f), 0.0f}; // Siden vi roterer med {0, 1, 0} spinner den om y-aksen
-    normalizeQt(&spin);
+    Qt rot_back;
+    float pitch = (cam.pitch+20.0f) * 0.01745; //0.3f;
+    rotationQtfs(pitch,  .0f, .0f, 1.0f,  &rot_back);
     
+    // Roter med kameras retning
+    Qt rot_round;
+    float yaw = -cam.yaw * 0.01745329251f;
+    rotationQtfs(yaw,  .0f, 1.0f, .0f,  &rot_round);
+  
+    // Spinn for steinen
+    Qt spin;
+    rotationQtfs(stone.spin,  .0f, 1.0f, .0f,  &spin);
 
+    // Regn ut rotasjonen og oversett til matrise
+    mat4 rotation_mat;
+    Qt   rotation = realQt();        
     mulQt(&rotation, &rot_round);
     mulQt(&rotation, &rot_back);
     mulQt(&rotation, &spin);
-    
-    mat4 rotation_mat;
     QtAsM4(&rotation, rotation_mat);
-
-
 
     //
     // Transler og tegn første kube
@@ -568,8 +564,8 @@ int main(void) {
     
     vec3 scale = {0.5f, 0.1f, 0.5f};
     scaleM4(model, scale);
-    mulM4_(model, rotation_mat);
-    mkTranslation(model, stone.pos);
+    mulM4_(model,  rotation_mat);
+    transM4(model, stone.pos);
 
     setMat4(main_shader.id, "model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -604,7 +600,7 @@ int main(void) {
     mset(model, 1, 1, 0.005f);
     mset(model, 2, 2, 1000.0f);
 
-    mkTranslation(model, water.pos);   // Transler 'model' til stone.pos
+    transM4(model, water.pos);   // Transler 'model' til stone.pos
 
     setMat4(main_shader.id, "model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -637,7 +633,7 @@ int main(void) {
     mset(model, 1, 1, 0.5f);
     mset(model, 2, 2, 0.5f);
         
-    mkTranslation(model, light_cube.pos);
+    transM4(model, light_cube.pos);
     
     setMat4(light_shader.id, "model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);

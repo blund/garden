@@ -42,7 +42,6 @@
 //
 
 
-
 void addQt (Qt *a, Qt *b) {
   for (int i = 0; i < 4; i++) {
     a->array[i] += b->array[i];
@@ -126,6 +125,26 @@ void normalizeQt (Qt *q) {
 
 }
 
+void rotationQt(float theta, vec3 dir, Qt *qt){
+  float sin_theta = sin(theta);
+  qt->s = cos(theta);
+  qt->x = dir[0]*sin_theta;
+  qt->y = dir[1]*sin_theta;
+  qt->z = dir[2]*sin_theta;
+
+  normalizeQt(qt);
+}
+
+void rotationQtfs(float theta, float x, float y, float z, Qt *qt){
+  theta /= 2.0f;
+  float sin_theta = sin(theta);
+  qt->s = cos(theta);
+  qt->x = x*sin_theta;
+  qt->y = y*sin_theta;
+  qt->z = z*sin_theta; 
+}
+
+
 void printQt(Qt a) {
   printf("Qt: %f %f %f %f\n", a.s, a.x, a.y, a.z);
 }
@@ -161,15 +180,15 @@ void inline setV3(vec3 v, int a, int b, int c) {
   v[2] = c;
 }
 
-void mkTranslation(mat4 m, vec3 v) {
-  mset(m, 0, 3, v[0]);
-  mset(m, 1, 3, v[1]);
-  mset(m, 2, 3, v[2]);
+void transM4(mat4 m, vec3 v) {
+  m[12] += v[0];
+  m[13] += v[1];
+  m[14] += v[2];
 }
 
 void translate(mat4 m, vec3 v, mat4 res, mat4 tmp) {
   initIdM4(tmp);
-  mkTranslation(tmp, v);
+  transM4(tmp, v);
   mulM4(m, tmp, res);
 }
 

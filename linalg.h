@@ -26,6 +26,7 @@ typedef struct Qt {
   };
 } Qt;
 
+#define realQt() {1.0f}
 void addQt (Qt *a, Qt *b);
 void subQt (Qt *a, Qt *b);
 void mulQt (Qt *a, Qt *b);
@@ -33,6 +34,8 @@ void printQt (Qt a);
 void mulV3Qt (vec3 v, Qt *q);
 void QtAsM4  (Qt *q, mat4 m);
 void normalizeQt (Qt *a);
+void rotationQt(float angle, vec3 dir, Qt *qt); // normaliserer dir
+void rotationQtfs(float theta, float x, float y, float z, Qt *qt);
 
 // Matrices
 void initIdM4(mat4 m);
@@ -44,7 +47,8 @@ void mset(mat4 m1, int row, int col, float val);
 float mget(mat4 m1, int row, int col);
 
 void mulM4_(mat4 m1, mat4 m2);
-void mkTranslation(mat4 m, vec3 v);
+//void mkTranslation(mat4 m, vec3 v);
+void transM4(mat4 m, vec3 v);
 void rotateZ(mat4 m, float deg, mat4 res);
 void rotateX(mat4 m, float deg, mat4 res);
 void rotateY(mat4 m, float deg, mat4 res);
