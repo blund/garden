@@ -29,9 +29,10 @@ typedef struct Qt {
 void addQt (Qt *a, Qt *b);
 void subQt (Qt *a, Qt *b);
 void mulQt (Qt *a, Qt *b);
-void normalizeQt (Qt *a);
 void printQt (Qt a);
 void mulV3Qt (vec3 v, Qt *q);
+void QtAsM4  (Qt *q, mat4 m);
+void normalizeQt (Qt *a);
 
 // Matrices
 void initIdM4(mat4 m);

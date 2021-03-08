@@ -64,6 +64,27 @@ void mulQt (Qt *a_, Qt *b) {
   a_->z = (a.s*b->z) + (b->s*a.z) + (a.x*b->y) - (b->x*a.y);
 }
 
+void QtAsM4 (Qt *q, mat4 m) {
+  // q MÅ NORMALISERES FØRST
+  initIdM4(m);
+  mset(m, 0,0, 1.0f - 2*pow(q->y,2) -  2*pow(q->z,2));
+  mset(m, 0,1, 2*q->x*q->y - 2*q->z*q->s);
+  mset(m, 0,2, 2*q->x*q->z + 2*q->y*q->s);
+  mset(m, 1,0, 2*q->x*q->y + 2*q->z*q->s);
+  mset(m, 1,1, 1.0f - 2*pow(q->x,2) -  2*pow(q->z,2));
+  mset(m, 1,2, 2*q->y*q->z - 2*q->x*q->s);
+  mset(m, 2,0, 2*q->x*q->z - 2*q->y*q->s);
+  mset(m, 2,1, 2*q->y*q->z + 2*q->x*q->s);
+  mset(m, 2,2, 1.0f - 2*pow(q->x,2) - 2*pow(q->y,2));
+
+  /*
+    1 - 2*qy^2 - 2*qz^2 2*qx*qy - 2*qz*qw   2*qx*qz + 2*qy*qw   0
+    2*qx*qy + 2*qz*qw 	1 - 2*qx^2 - 2*qz^2 2*qy*qz - 2*qx*qw   0
+    2*qx*qz - 2*qy*qw 	2*qy*qz + 2*qx*qw   1 - 2*qx^2 - 2*qy^2 0
+    0                   0                   0                   1
+  */
+}
+
 
 void mulV3Qt (vec3 v, Qt *q) {
   // https://math.stackexchange.com/questions/40164/how-do-you-rotate-a-vector-by-a-unit-quaternion
@@ -94,8 +115,9 @@ void scaleQt (Qt *a, float scale) {
 
 
 void normalizeQt (Qt *q) {
-  //
+  // @TODO - erstatt med compiler intrinsics, for clang og gcc
 
+  
   float norm = sqrt(pow(q->array[0], 2) + pow(q->array[1],2) + pow(q->array[2],2) + pow(q->array[3],2));
 
   for (int i = 0; i < 4; i++) {

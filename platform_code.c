@@ -1,11 +1,33 @@
 
-//
-// Om code-reloading
-// https://www.danielecarbone.com/hot-code-reloading/
-//
 
-// https://www.glfw.org/docs/latest/compile.html#compile_manual
-// https://lazyfoo.net/tutorials/SDL/index.php
+/*
+
+*** GJØREMÅL***
+
+* Flytt utregning av view-matrise til CPU!
+      - https://www.3dgep.com/understanding-the-view-matrix/#Introduction
+
+* Rotasjon - Fiks slik at steinen både roterer og vender tilbake...
+      - https://www.3dgep.com/understanding-quaternions/#Pure_Quaternions
+      - Må nok lese mer om quaternions...
+        - https://eater.net/quaternions
+
+* Separer ut spill-kode
+      - https://www.danielecarbone.com/hot-code-reloading/
+      - https://github.com/blund/hhh/
+
+* Legg til RSQRT for Clang/GCC
+
+* Fiks lys/rendering-greier
+
+
+
+ */
+
+
+
+
+
 
 
 #include <stdio.h>
@@ -213,22 +235,6 @@ Light_Cube light_cube = {
 //void *memory[2*1024*1024];
 
 int main(void) {
-
-  vec3 test = {1.0f, 0.0f, 0.0f};
-  Qt   rot  = {0.707f, 0.0f, 0.707f, 0.0f};
-
-  mulV3Qt(test, &rot);
-  printV3(test);
-
-
-  
-  //global.memory = malloc(4*1024*1024);
-  
-/*
-  From LearnOpenGl:
-  Since a vertex by itself has no surface (it's just a single point in space) we retrieve a normal vector by using its surrounding vertices to figure out the surface of the vertex. We can use a little trick to calculate the normal vectors for all the stone's vertices by using the cross product, but since a 3D stone is not a complicated shape we can simply manually add them to the vertex data.
-*/
-    
   glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -533,7 +539,7 @@ int main(void) {
 
     // Transler og tegn første kube
 
-
+    // @TODO - gjør dette etter at vi har blitt med i quaternion gang :)
     // @TANKER - rekkefølge for skalering
     // DONE - Skaler modell
     // DONE - Roter langs y-akse med tid
@@ -545,31 +551,21 @@ int main(void) {
     vec3 scale = {0.5f, 0.1f, 0.5f};
     scaleM4(model, scale);
 
-    vec3 xz_dir = {cam.front[0], 0.0f, cam.front[2]}; // Isoler xz-komponenten
-    normalizeV3(xz_dir); // @USIKKER tror man må normalisere??? Vet ikke
-    float theta = angleV3(cam.front, xz_dir); // Finn vinkelen til kastet
+
+    // Vi roterer her med qts! hurra!
+    mat4 round_rotate;
+    float yaw = -0.5f * cam.yaw * 0.01745329251f;
+    Qt rot_round = {cos(yaw), 0.0f, sin(yaw), 0.0f}; // Siden vi roterer med {0, 1, 0} spinner den om y-aksen
+    normalizeQt(&rot_round);
+    QtAsM4(&rot_round, round_rotate);
+
+
+    // @LØSNING - for å vende steinen "bakover" må vi finne 'høyre'-vektoren og rotere om den.. Dette MÅ gjøres etter round_rotate... Så vidt jeg forstår :)
+
     
+    //rotateY2(model, stone.spin);
+    mulM4_(model, round_rotate);
 
-
-    //vec3 x_unit   = {-1.0f, 0.0f, 0.0f};
-    //float theta_a = angleV3(x_unit, xz_dir); // Finn vinkelen til kastet
-
-    vec3  z_unit  = {1.0f, 0.0f, 0.0f};
-    float theta_b = angleV3(z_unit, xz_dir); // Finn vinkelen til kastet
-
-    //printf("%f\n", theta_b);
-    
-    // float theta_ = theta_b > 3.1415f / 2.0f ? theta_b : theta_a;
-    
-    //printf("x: %f, z; %f\n", theta_a, theta_b);
-    //if (theta2 > 3.14f) theta2 += 3.14f;
-    
-    rotateY2(model, stone.spin);
-    //rotateX2(model, theta);
-
-
-        
-    //rotateY2(model, stone.spin); 
     mkTranslation(model, stone.pos);
 
     setMat4(main_shader.id, "model", model);
@@ -704,8 +700,10 @@ void mouseCallback(GLFWwindow* window, double x_pos, double y_pos) {
 }
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
-  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+  if (button == GLFW_MOUSE_BUTTON_LEFT  && action == GLFW_PRESS)
     controller.throw = 1;
+  if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+    controller.retrieve = 1;
     //popup_menu();
 }
 
