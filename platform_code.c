@@ -506,13 +506,6 @@ int main(void) {
     // Tegn stein
     //
 
-    vec3 d = {0};
-    vec3 r = {0};
-    vec3 u = {0};
-
-
-    //const mat4 idm4;
-    //initIdM4(idm4);
     
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -537,35 +530,45 @@ int main(void) {
     setVec3(main_shader.id, "cam_front", cam.front);
     setVec3(main_shader.id, "cam_up",    cam.up);
 
+    //
+    // Beregn rotasjon for kuben
+
+    Qt   rotation = {1.0f}; // "Real" quaternion
+       
+    // Vend bakover
+    float pitch = 0.5 * (cam.pitch+20.0f) * 0.01745; //0.3f;
+    float angle = sin(pitch);
+    Qt rot_back = {cos(pitch), angle*0.0f, angle*0.0f, angle*1.0f}; // Siden vi roterer med {0, 1, 0} spinner den om y-aksen
+    normalizeQt(&rot_back);
+
+    // Roter med kameras retning
+    float yaw = -0.5f * cam.yaw * 0.01745329251f;
+    Qt rot_round = {cos(yaw), 0.0f, sin(yaw), 0.0f}; // Siden vi roterer med {0, 1, 0} spinner den om y-aksen
+    normalizeQt(&rot_round);
+
+    // Spinn for steinen
+    Qt spin = {cos(stone.spin/2.0f), 0.0f, sin(stone.spin/2.0f), 0.0f}; // Siden vi roterer med {0, 1, 0} spinner den om y-aksen
+    normalizeQt(&spin);
+    
+
+    mulQt(&rotation, &rot_round);
+    mulQt(&rotation, &rot_back);
+    mulQt(&rotation, &spin);
+    
+    mat4 rotation_mat;
+    QtAsM4(&rotation, rotation_mat);
+
+
+
+    //
     // Transler og tegn første kube
-
-    // @TODO - gjør dette etter at vi har blitt med i quaternion gang :)
-    // @TANKER - rekkefølge for skalering
-    // DONE - Skaler modell
-    // DONE - Roter langs y-akse med tid
-    // TODO - Vend bakover mot utkaststed.... må tenke litt på dette, må nok gjøres med en generell rotasjonsmatrise: https://en.wikipedia.org/wiki/Rotation_matrix#Nested_dimensions (ser ut som GPU-arbeid :) )
-
+    
     clearM4(model);
     initIdM4(model);
     
     vec3 scale = {0.5f, 0.1f, 0.5f};
     scaleM4(model, scale);
-
-
-    // Vi roterer her med qts! hurra!
-    mat4 round_rotate;
-    float yaw = -0.5f * cam.yaw * 0.01745329251f;
-    Qt rot_round = {cos(yaw), 0.0f, sin(yaw), 0.0f}; // Siden vi roterer med {0, 1, 0} spinner den om y-aksen
-    normalizeQt(&rot_round);
-    QtAsM4(&rot_round, round_rotate);
-
-
-    // @LØSNING - for å vende steinen "bakover" må vi finne 'høyre'-vektoren og rotere om den.. Dette MÅ gjøres etter round_rotate... Så vidt jeg forstår :)
-
-    
-    //rotateY2(model, stone.spin);
-    mulM4_(model, round_rotate);
-
+    mulM4_(model, rotation_mat);
     mkTranslation(model, stone.pos);
 
     setMat4(main_shader.id, "model", model);
