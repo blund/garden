@@ -17,8 +17,10 @@ int loadShader(const char *shader_name, int shader_type);
 int compileShader(Shader *shader, int verbose);
 int hotloadShader(Shader *shader);
 
-void setMat4(int shader, char *param, mat4 value);
-void setInt(int shader, char *param, int value);
-void setVec3(int shader, char *param, vec3 value);
+void setMat4 (int shader, char *param, mat4 value);
+void setVec3 (int shader, char *param, V3 value);
+void setInt  (int shader, char *param, int value);
+void setFloat(int shader, char *param, float value);
+
 
 #endif

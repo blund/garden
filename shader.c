@@ -161,7 +161,11 @@ void setInt(int shader, char *param, int value) {
   glUniform1i(glGetUniformLocation(shader, param), value);
 }
 
+void setFloat(int shader, char *param, float value) {
+  glUniform1f(glGetUniformLocation(shader, param), value);
+}
 
-void setVec3(int shader, char *param, vec3 value) {
-  glUniform3fv(glGetUniformLocation(shader, param), 1, value);
+
+void setVec3(int shader, char *param, V3 value) {
+  glUniform3fv(glGetUniformLocation(shader, param), 1, value.arr);
 }
