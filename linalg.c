@@ -13,7 +13,7 @@
 #include "linalg.h"
 
 
-
+// @TODO - endre mat4-greien til å bruke V3, også Qt-greiene.
 
 
 /*
@@ -42,108 +42,109 @@
 //
 
 
-void addQt (Qt *a, Qt *b) {
-  for (int i = 0; i < 4; i++) {
-    a->array[i] += b->array[i];
-  }
+Qt realQt() {
+  Qt out = {1.0f};
+  return out;
 }
 
-void subQt (Qt *a, Qt *b) {
+
+Qt addQt (Qt a, Qt b) {
+  Qt out;
   for (int i = 0; i < 4; i++) {
-    a->array[i] -= b->array[i];
+    out.arr[i] = a.arr[i] + b.arr[i];
   }
+  return out;
 }
 
-void mulQt (Qt *a_, Qt *b) {
+
+Qt subQt (Qt a, Qt b) {
+  Qt out;
+  for (int i = 0; i < 4; i++) {
+    out.arr[i] = a.arr[i] - b.arr[i];
+  }
+  return out;
+}
+
+Qt mulQt (Qt a, Qt b) {
   // https://www.dgep.com/understanding-quaternions/#Quaternions
-  Qt a = {a_->s, a_->x, a_->y, a_->z};
-  a_->s = (a.s*b->s) - (a.x*b->x) - (a.y*b->y) - (a.z*b->z);
-  a_->x = (a.s*b->x) + (b->s*a.x) + (a.y*b->z) - (b->y*a.z);
-  a_->y = (a.s*b->y) + (b->s*a.y) + (a.z*b->x) - (b->z*a.x);
-  a_->z = (a.s*b->z) + (b->s*a.z) + (a.x*b->y) - (b->x*a.y);
+  Qt out;
+  out.s = (a.s*b.s) - (a.x*b.x) - (a.y*b.y) - (a.z*b.z);
+  out.x = (a.s*b.x) + (b.s*a.x) + (a.y*b.z) - (b.y*a.z);
+  out.y = (a.s*b.y) + (b.s*a.y) + (a.z*b.x) - (b.z*a.x);
+  out.z = (a.s*b.z) + (b.s*a.z) + (a.x*b.y) - (b.x*a.y);
+
+  return out;
 }
 
-void QtAsM4 (Qt *q, mat4 m) {
+void QtAsM4 (Qt q, mat4 m) {
   // q MÅ NORMALISERES FØRST
   initIdM4(m);
-  mset(m, 0,0, 1.0f - 2*pow(q->y,2) -  2*pow(q->z,2));
-  mset(m, 0,1, 2*q->x*q->y - 2*q->z*q->s);
-  mset(m, 0,2, 2*q->x*q->z + 2*q->y*q->s);
-  mset(m, 1,0, 2*q->x*q->y + 2*q->z*q->s);
-  mset(m, 1,1, 1.0f - 2*pow(q->x,2) -  2*pow(q->z,2));
-  mset(m, 1,2, 2*q->y*q->z - 2*q->x*q->s);
-  mset(m, 2,0, 2*q->x*q->z - 2*q->y*q->s);
-  mset(m, 2,1, 2*q->y*q->z + 2*q->x*q->s);
-  mset(m, 2,2, 1.0f - 2*pow(q->x,2) - 2*pow(q->y,2));
-
-  /*
-    1 - 2*qy^2 - 2*qz^2 2*qx*qy - 2*qz*qw   2*qx*qz + 2*qy*qw   0
-    2*qx*qy + 2*qz*qw 	1 - 2*qx^2 - 2*qz^2 2*qy*qz - 2*qx*qw   0
-    2*qx*qz - 2*qy*qw 	2*qy*qz + 2*qx*qw   1 - 2*qx^2 - 2*qy^2 0
-    0                   0                   0                   1
-  */
+  mset(m, 0,0, 1.0f - 2*pow(q.y,2) -  2*pow(q.z,2));
+  mset(m, 0,1, 2*q.x*q.y - 2*q.z*q.s);
+  mset(m, 0,2, 2*q.x*q.z + 2*q.y*q.s);
+  mset(m, 1,0, 2*q.x*q.y + 2*q.z*q.s);
+  mset(m, 1,1, 1.0f - 2*pow(q.x,2) -  2*pow(q.z,2));
+  mset(m, 1,2, 2*q.y*q.z - 2*q.x*q.s);
+  mset(m, 2,0, 2*q.x*q.z - 2*q.y*q.s);
+  mset(m, 2,1, 2*q.y*q.z + 2*q.x*q.s);
+  mset(m, 2,2, 1.0f - 2*pow(q.x,2) - 2*pow(q.y,2));
 }
 
 
-void mulV3Qt (vec3 v, Qt *q) {
-  // https://math.stackexchange.com/questions/40164/how-do-you-rotate-a-vector-by-a-unit-quaternion
-  // vec3 test = {1.0f, 0.0f, 0.0f};
-  // Qt   rot  = {0.707f, 0.0f, 0.707f, 0.0f};
+Qt rotateV3Qt (V3 v, Qt q) {
+  // Hamilton multiplication https://math.stackexchange.com/questions/40164/how-do-you-rotate-a-vector-by-a-unit-quaternion
 
-  // mulV3Qt(test, &rot);
-  // normalizeV3(test);
-  // printV3(test);
-  
-  Qt rot  = {q->s, q->x, q->y, q->z};
-  Qt vec  = {0.0f, v[0], v[1], v[2]};
-  Qt rot_ = {q->s, -q->x, -q->y, -q->z};
+  Qt rot     = {q.s, q.x, q.y, q.z};
+  Qt vec     = {0.0f, v.x, v.y, v.z};
+  Qt rot_inv = {q.s, -q.x, -q.y, -q.z};
 
-  
-  mulQt(&rot, &vec);
-  mulQt(&rot, &rot_);
-
-  v[0] = rot.x; v[1] = rot.y; v[2] = rot.z;
+  return mulQt(mulQt(rot, vec), rot_inv);
 }
 
-
-void scaleQt (Qt *a, float scale) {
+Qt scaleQt (Qt in, float scale) {
+  Qt out;
   for (int i = 0; i < 4; i++) {
-    a->array[i] *= scale;
+    out.arr[i] = scale * in.arr[i];
   }
+  return out;
 }
 
-
-void normalizeQt (Qt *q) {
+Qt normalizeQt (Qt q) {
+  Qt out;
   // @TODO - erstatt med compiler intrinsics, for clang og gcc
-
-  
-  float norm = sqrt(pow(q->array[0], 2) + pow(q->array[1],2) + pow(q->array[2],2) + pow(q->array[3],2));
+  float norm = sqrt(pow(q.s, 2) + pow(q.x,2) + pow(q.y,2) + pow(q.z,2));
 
   for (int i = 0; i < 4; i++) {
-    q->array[i] /= norm;
+    out.arr[i] = q.arr[i] / norm;
   }
 
+  return out;
+
 }
 
-void rotationQt(float theta, vec3 dir, Qt *qt){
+Qt rotationQt(float theta, V3 dir) {
+  Qt qt;
   float sin_theta = sin(theta);
-  qt->s = cos(theta);
-  qt->x = dir[0]*sin_theta;
-  qt->y = dir[1]*sin_theta;
-  qt->z = dir[2]*sin_theta;
+  qt.s = cos(theta);
+  qt.x = dir.x*sin_theta;
+  qt.y = dir.y*sin_theta;
+  qt.z = dir.z*sin_theta;
 
-  normalizeQt(qt);
+  return normalizeQt(qt);
 }
 
-void rotationQtfs(float theta, float x, float y, float z, Qt *qt){
+Qt rotationQtfs(float theta, float x, float y, float z) {
+  Qt qt;
+
   theta /= 2.0f;
   float sin_theta = sin(theta);
-  qt->s = cos(theta);
-  qt->x = x*sin_theta;
-  qt->y = y*sin_theta;
-  qt->z = z*sin_theta; 
-}
+  qt.s = cos(theta);
+  qt.x = x*sin_theta;
+  qt.y = y*sin_theta;
+  qt.z = z*sin_theta;
 
+  return normalizeQt(qt);
+}
 
 void printQt(Qt a) {
   printf("Qt: %f %f %f %f\n", a.s, a.x, a.y, a.z);
@@ -160,11 +161,9 @@ void inline mset(mat4 m, int row, int col, float val) {
   m[row + 4*col] = val;
 }
 
-
 float inline mget(mat4 m, int row, int col) {
   return m[row + 4*col];
 }
-
   
 void initIdM4(mat4 m) {
   clearM4(m);
@@ -174,19 +173,19 @@ void initIdM4(mat4 m) {
   mset(m, 3, 3, 1.0f);
 }
 
-void inline setV3(vec3 v, int a, int b, int c) {
-  v[0] = a;
-  v[1] = b;
-  v[2] = c;
+void inline setV3(V3 v, float a, float b, float c) {
+  v.x = a;
+  v.y = b;
+  v.z = c;
 }
 
-void transM4(mat4 m, vec3 v) {
-  m[12] += v[0];
-  m[13] += v[1];
-  m[14] += v[2];
+void transM4(mat4 m, V3 v) {
+  m[12] += v.x;
+  m[13] += v.y;
+  m[14] += v.z;
 }
 
-void translate(mat4 m, vec3 v, mat4 res, mat4 tmp) {
+void translate(mat4 m, V3 v, mat4 res, mat4 tmp) {
   initIdM4(tmp);
   transM4(tmp, v);
   mulM4(m, tmp, res);
@@ -203,21 +202,6 @@ void copyM4(mat4 from, mat4 to) {
     to[i] = from[i];
   }
 }
-
-/*
-void mulM4(mat4 A, mat4 B, mat4 result) {
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; i < 4; i++) {
-      mset(result, i, j,
-           mget(A, i, 1) * mget(B, 1, j)
-           mget(A, i, 2) * mget(B, 2, j)
-           mget(A, i, 3) * mget(B, 3, j)
-           mget(A, i, 4) * mget(B, 4, j));
-    }
-  }
-}
-*/
-
 
 void ortho(float left, float right, float bottom, float top,
            float near, float far, mat4 res) {
@@ -256,7 +240,6 @@ void perspective(float fov, float aspect, float near, float far, mat4 res) {
        - (2.0f * far * near) / (far - near));
 }
 
-
 void mulM4_(mat4 m1, mat4 m2) {
   mat4 tmp;
   copyM4(m1, tmp);
@@ -272,10 +255,7 @@ void mulM4_(mat4 m1, mat4 m2) {
 }
 
 void mulM4(mat4 m1, mat4 m2, mat4 res) {
-  
-
-  
-  for (int i = 0; i < 4; i++) {
+   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
       res[j + i * 4] = 0;
       for (int k = 0; k < 4; k++) {
@@ -340,14 +320,14 @@ void rotateY2(mat4 m, float deg) {
   mulM4_(m, rot);
 }
 
-void scaleM4(mat4 m, vec3 v) {
+void scaleM4(mat4 m, V3 v) {
   mat4 tmp;
   copyM4(m, tmp);
   
   mat4 scale = {};
-  mset(scale, 0, 0, v[0]);
-  mset(scale, 1, 1, v[1]);
-  mset(scale, 2, 2, v[2]);
+  mset(scale, 0, 0, v.x);
+  mset(scale, 1, 1, v.y);
+  mset(scale, 2, 2, v.z);
   mset(scale, 3, 3, 1.0f);
   mulM4(tmp, scale, m);
 }
@@ -376,60 +356,69 @@ inline float rsqrt( float number ) {
 */
 
 
-float lenV3(vec3 v) {
-  return sqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2));
+V3 mkV3(float x, float y, float z) {
+  V3 result;
+  result.x = x;
+  result.y = y;
+  result.z = z;
+  return result;
 }
 
-void normalizeV3(vec3 v) {
-  float factor = 1/sqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2)); //rsqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2));
-  v[0] *= factor;
-  v[1] *= factor;
-  v[2] *= factor;
+V3 addV3(V3 a, V3 b) {
+  V3 v_out;
+  for (int i = 0; i < 3; i++) {
+    v_out.arr[i] = a.arr[i] + b.arr[i];
+  }
+  return v_out;
 }
 
-void crossV3(vec3 u, vec3 v, vec3 result) {
-  result[0] = u[1]*v[2] - u[2]*v[1];
-  result[1] = u[2]*v[0] - u[0]*v[2];
-  result[2] = u[0]*v[1] - u[1]*v[0];
+V3 subV3(V3 a, V3 b) {
+  V3 v_out;
+  for (int i = 0; i < 3; i++) {
+    v_out.arr[i] = a.arr[i] - b.arr[i];
+  }
+  return v_out;
 }
 
-float dotV3(vec3 u, vec3 v) {
-  return u[0]*v[0] + u[1]*v[1] + u[2]*v[2];
+V3 crossV3(V3 u, V3 v) {
+  V3 out;
+  out.x = u.y*v.z - u.z*v.y;
+  out.y = u.z*v.x - u.x*v.z;
+  out.z = u.x*v.y - u.y*v.x;
+
+  return out;
 }
 
-float angleV3(vec3 u, vec3 v) {
-  float len_u = sqrt(pow(u[0],2) + pow(u[1],2) + pow(u[2],2));
-  float len_v = sqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2));
+V3 scaleV3(V3 v_in, float f) {
+  V3 v_out;
+  for (int i = 0; i < 3; i++) {
+    v_out.arr[i] = v_in.arr[i] * f;
+  }
+  return v_out;
+}
+
+float dotV3(V3 u, V3 v) {
+  return u.x*v.x + u.y*v.y + u.z*v.z;
+}
+
+float angleV3(V3 u, V3 v) {
+  float len_u = sqrt(pow(u.x,2) + pow(u.y,2) + pow(u.z,2));
+  float len_v = sqrt(pow(v.x,2) + pow(v.y,2) + pow(v.z,2));
 
   float cos_theta = dotV3(u, v)/(len_u * len_v);
   return acos(cos_theta);  
 }
 
-void scaleV3(vec3 v, float f) {
-  v[0] *= f;
-  v[1] *= f;
-  v[2] *= f;
-}
-
-void copyV3(vec3 from, vec3 to) {
+V3 normalizeV3(V3 v) {
+  float factor = 1/sqrt(pow(v.x,2) + pow(v.y,2) + pow(v.z,2)); //rsqrt(pow(v[0],2) + pow(v[1],2) + pow(v[2],2));
+  V3 out;
   for (int i = 0; i < 3; i++) {
-    to[i] = from[i];
+    out.arr[i] = factor * v.arr[i];
   }
+  return out;
 }
 
-void addV3(vec3 to, vec3 from) {
-  for (int i = 0; i < 3; i++) {
-    to[i] += from[i];
-  }
+float lenV3(V3 v) {
+  return sqrt(pow(v.x,2) + pow(v.y,2) + pow(v.z,2));
 }
 
-void subV3(vec3 to, vec3 from) {
-  for (int i = 0; i < 3; i++) {
-    to[i] -= from[i];
-  }
-}
-
-
-void printV3(vec3 v) {
-  printf("[%f, %f, %f]\n", v[0], v[1], v[2]);
-}
