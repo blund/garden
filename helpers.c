@@ -11,6 +11,22 @@
 #include "helpers.h"
 #include "linalg.h"
 
+// @TODO - Lasting av obj-filer.
+//http://kixor.net/dev/objloader/
+
+float randFloat(float min, float max) {
+  return ((float)rand()/(float)(RAND_MAX)) * (max - min) + min;
+}
+
+V3 randV3(float min, float max) {
+  float x = randFloat(min, max);
+  float y = randFloat(min, max);
+  float z = randFloat(min, max);
+  V3 dir  = {x, y, z};
+  return dir;
+}
+
+
 
 char *loadFile(const char *file_name) {
   /* declare a file pointer */
@@ -66,8 +82,8 @@ int loadTexture(char *texture_path) {
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
   int width, height, nr_channels;
   unsigned char *data = stbi_load(texture_path, &width, &height, &nr_channels, 0);

@@ -41,7 +41,7 @@ void main()
    Normal   = mat3(transpose(inverse(model))) * v_normal;
    Frag_pos = vec3(model * vec4(v_pos, 1.0));
 
-   gl_Position = proj * view * model * vec4(v_pos, 1.0f);
+   gl_Position = (proj * view * model * vec4(v_pos, 1.0f));
 
    //texture_coord = vec2(v_texture_coord.x, 1.0f - v_texture_coord.y);
 }

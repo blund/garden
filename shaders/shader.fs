@@ -70,10 +70,11 @@ void main()
   //
   // Sett sammen lysene!!
   vec3 light = (ambient + diffuse + specular) * object_color; // * recip_distance;
-  
+
+ 
 
   float distance = sqrt(pow(gl_FragCoord.x-450, 2) + pow(gl_FragCoord.y - 300, 2));
-  color = vec4(light, 1.0);// - distance * 0.001;// + 100/ (gl_FragCoord.x + gl_FragCoord.y/2);
+  color = vec4(light, 0.3);// - distance * 0.001;// + 100/ (gl_FragCoord.x + gl_FragCoord.y/2);
       
   
   

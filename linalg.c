@@ -422,3 +422,7 @@ float lenV3(V3 v) {
   return sqrt(pow(v.x,2) + pow(v.y,2) + pow(v.z,2));
 }
 
+
+void  printV3(V3 v) {
+  printf("%f, %f, %f\n", v.x, v.y, v.z);
+}

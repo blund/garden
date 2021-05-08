@@ -1,4 +1,12 @@
 BUGS:
+* Vektor-grafikk:
+  
+* VANNSIMULERING
+  https://www.shadertoy.com/view/lslGDB
+  https://www.shadertoy.com/view/4sX3Rs - lens flare
+  https://www.mikeash.com/thesis/thesis-en.pdf
+  https://mikeash.com/pyblog/fluid-simulation-for-dummies.html
+  https://ubm-twvideo01.s3.amazonaws.com/o1/vault/gdc08/slides/S6509i1.pdf
 * Om imgui:
    https://silverspaceship.com/inner/imgui/
    https://www.google.com/search?client=firefox-b-d&q=eskil+steenberg
@@ -33,3 +41,16 @@ BUGS:
     dlclose(lib_handle);
 
    Å åpne og lukke slik garanterer at vi ikke skriver over når vi trenger funksjonene.... Men er litt usikker
+
+
+* PERLIN NOISE
+  
+* Diverse
+  - Wavepackets? 
+    - https://scholar.harvard.edu/files/schwartz/files/lecture11-wavepackets.pdf
+
+  - [[https://gpfault.net/posts/perlin-noise.txt.html][Hvordan programmere Perlin Noise]]
+  - [[https://www.youtube.com/watch?v=ZI1dmHv3MeM][Perlin Noise-løkke]]
+  - [[https://www.youtube.com/watch?v=ELpZW62HGVs&list=PLRqwX-V7Uu6bgPNQAdxQZpJuJCjeOr7VD&index=8][Terreng-generering med Perlin Noise]]
+
+  - [[https://bisqwit.iki.fi/story/howto/dither/jy/][Dithering]]

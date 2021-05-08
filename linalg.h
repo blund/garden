@@ -82,6 +82,11 @@ float angleV3(V3 u, V3 v);
 float dotV3(V3 u, V3 v);
 float lenV3(V3 v);
 
+void  addV3_(V3 to, V3 from);
+void  subV3_(V3 to, V3 from);
+void  scaleV3_(V3 v, float f);
+void  normalizeV3_(V3 v);
+
 void  printV3(V3 v);
 
 // Various

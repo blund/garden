@@ -14,8 +14,11 @@
 #define true 1
 #define false 0
 
+float randFloat(float min, float max);
+V3    randV3(float min, float max);
+
 char *loadFile(const char *file_name);
-int loadTexture(char *texture_path);
+int   loadTexture(char *texture_path);
   
 
 float min(float x, float y);

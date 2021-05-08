@@ -1,5 +1,4 @@
 
-
 /*
 
 *** GJØREMÅL***
@@ -52,9 +51,11 @@
 #include "helpers.h"
 #include "shader.h"
 
+#include "boid.c"
 
-const unsigned int SCR_WIDTH  = 900;
-const unsigned int SCR_HEIGHT = 600;
+
+unsigned int SCR_WIDTH  = 900;
+unsigned int SCR_HEIGHT = 600;
 
 
 typedef enum Game_Mode {
@@ -92,7 +93,7 @@ typedef struct Camera {
 
   float yaw;
   float pitch;
-  V3  direction;
+  V3    direction;
 
   float speed;
   float fov;
@@ -273,8 +274,12 @@ Light_Cube light_cube = {
   .specular  = {1.0f, 1.0f, 1.0},
 };
 
+Boid boid = {
+  .pos = {1.0f, 1.0f, 1.0f},
+};
 
 
+Boid boids[50];
 
 
 //void *memory[2*1024*1024];
@@ -309,6 +314,7 @@ int main(void) {
   }
 
   glEnable(GL_DEPTH_TEST);
+  glEnable(GL_PROGRAM_POINT_SIZE);
 
   //glEnable(GL_MULTISAMPLE);  
   
@@ -327,9 +333,127 @@ int main(void) {
     .f_path = "shaders/light_cube.fs",
     .v_path = "shaders/light_cube.vs",
   };
+
+  Shader fluid_debug_shader = {
+    .name   = "fluid_debug_shader",
+    .f_path = "shaders/fluid_debug.frag",
+    .v_path = "shaders/fluid_debug.vert",
+  };
+
+  Shader boid_shader = {
+    .name   = "boid_shader",
+    .f_path = "shaders/boid.frag",
+    .v_path = "shaders/boid.vert",
+  };
   
   if (!compileShader(&main_shader,  true)) exit(-1); // 1 betyr her at den skal printe debug data
   if (!compileShader(&light_shader, true)) exit(-1);
+  if (!compileShader(&fluid_debug_shader,  true)) exit(-1);
+  if (!compileShader(&boid_shader,  true)) exit(-1); 
+
+
+
+
+  //
+  // Her skal vi gjøre litt greier for å få i gang en vann-simulering...
+  //
+  
+
+  //
+  // BOID STUFF
+  //
+
+  for (int i = 0; i < 50; i++) {
+    boids[i].pos = randV3(-4.0f, 4.0f);
+    boids[i].pos.y += 2.0f;
+    boids[i].pos.z -= 4.0f;
+    boids[i].vel = randV3(-16.0f, 16.0f);
+    //printV3(boids[i].pos);
+  }
+
+  float boid_vertices[] = {
+    // first triangle
+    0.5f,  0.5f, 0.0f,  // top right
+    0.5f, -0.5f, 0.0f,  // bottom right
+    -0.5f,  0.5f, 0.0f,  // top left 
+    // second triangle
+    0.5f, -0.5f, 0.0f,  // bottom right
+    -0.5f, -0.5f, 0.0f,  // bottom left
+    -0.5f,  0.5f, 0.0f   // top left
+  }; 
+  
+  unsigned int boid_vbo, boid_vao;
+  glGenVertexArrays(1, &boid_vao);
+  glGenBuffers(1, &boid_vbo);
+  // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+  glBindVertexArray(boid_vao);
+  
+  glBindBuffer(GL_ARRAY_BUFFER, boid_vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(boid_vertices), boid_vertices, GL_STATIC_DRAW);
+
+
+
+
+  
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+  glEnableVertexAttribArray(0);
+  
+  
+
+  //
+  // TING SOM BRUKES FOR DEBUG AV FLUID DYN
+  //
+
+
+
+  int fluid_fbo;
+  glGenFramebuffers(1, &fluid_fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, fluid_fbo);
+  // Se om vi skal endre enum:
+  // https://www.khronos.org/opengl/wiki/Framebuffer_Object
+
+  
+  // Om hvordan man bruker fbo:
+  // http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
+  
+
+  float vertices[] = {
+    // Høyre trekant
+    // first triangle    // TEKSTURxs
+    0.5f,  0.5f, 0.0f,   0.0f, 0.0f,  // top right
+    0.5f, -0.5f, 0.0f,   1.0f, 0.0f,// bottom right
+    -0.5f,  0.5f, 0.0f,  0.0f, 1.0f,// top left 
+
+    // Venstre trekant
+    // second triangle
+    0.5f, -0.5f, 0.0f,   1.0f, 0.0f,// bottom right
+    -0.5f, -0.5f, 0.0f,  0.0f, 0.0f, // bottom left
+    -0.5f,  0.5f, 0.0f,  0.0f, 1.0f, // top left
+  }; 
+  unsigned int fluid_debug_vbo, fluid_debug_vao;
+  glGenVertexArrays(1, &fluid_debug_vao);
+  glGenBuffers(1, &fluid_debug_vbo);
+  // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+  glBindVertexArray(fluid_debug_vao);
+  
+  glBindBuffer(GL_ARRAY_BUFFER, fluid_debug_vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+  
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+  glEnableVertexAttribArray(1);
+  
+  // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
+  glBindBuffer(GL_ARRAY_BUFFER, 0); 
+  
+  // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
+  // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
+  glBindVertexArray(0); 
+  
+ 
+
+
 
   
 
@@ -341,6 +465,7 @@ int main(void) {
   if (!texture) {
     return -1;
   }
+
    
   unsigned int VBO;
   glGenBuffers(1, &VBO);
@@ -376,18 +501,27 @@ int main(void) {
   mat4 tmp   = {};
  
 
-  float aspect_ratio = (float)SCR_WIDTH / (float)SCR_HEIGHT;
+
 
   float last_time    = 0.0f;
   float current_time = 0.0f;
   
   int frame_count = 0;
+  
+  glBindFramebuffer(GL_FRAMEBUFFER, 0); // Nullstill framebuffer
+
+  
   while (!glfwWindowShouldClose(window)) {
+    
+    
     if (frame_count % 60 == 0) {
       hotloadShader(&main_shader);
+      hotloadShader(&light_shader);
+      hotloadShader(&fluid_debug_shader);
     }
     frame_count++;
 
+    
 
     //
     // Calculate some time!
@@ -397,9 +531,105 @@ int main(void) {
     global.dt    = current_time - last_time;
     last_time    = current_time;
 
+
+
+
     //
-    // Oppdater bevegelse
+    // Simuler Boids
     //
+    
+    
+    float look_radius = 3.0f;
+    float max_speed = 3.0f;
+    
+    float jitter = 0.2f;
+
+    float pos_steering   = 0.0f;
+    float vel_steering   = 1.0f; // Hvor mye retter de sin fart etter andres
+    float stone_steering = 1.0f; // Hvor sterkt følger de steinen?
+    
+    float floor_limit = 0.7f;  // Styrer når boidene begynner å vike unna bakken
+    float floor_push  = 10.0f; // Hvor stor kraften som dytter de er
+
+    float control = 0.1f; // Siste multiplikator for å justere i hvor stor grad disse kreftene virker
+    
+    // Gjør alt dette for hver boid
+    for (int i = 0; i < 50; i++) {
+      Boid *b0 = &boids[i];
+      
+      // b0->vel = addV3(b0->vel, randV3(-jitter, jitter));
+      
+
+      // @TODO - Fjern? Dette er buggy og gjør tydeligvis ikke noe som å justere farten ikke gjør..
+      // Styr mot senter av 'nære' boids
+      /*
+      V3  steering = {};
+      int count = 0;
+      
+      for (int j = 0; j < 50; j++) {
+        Boid *bn = &boids[j];
+        if (lenV3(subV3(b0->pos, bn->pos)) < look_radius) {
+          steering = addV3(steering, bn->vel);
+          count++;
+        }
+      }
+      steering = scaleV3(steering, pos_steering/(float)count);
+      b0->acc = steering;
+      */
+
+      
+      // Styr mot steinen
+      V3 target = stone.pos;
+      V3 dir    = subV3(stone.pos, b0->pos);
+      if (lenV3(dir) < 10.0f) {
+        V3 steer  = subV3(dir, b0->vel);
+        steer = scaleV3(steer, stone_steering);
+        b0->acc = addV3(b0->acc, steer);
+      }
+    
+      // Styr veksk fra bakken
+      if (b0->pos.y < floor_limit) {
+        b0->acc.y += floor_push * (floor_limit - b0->pos.y);
+      }
+    
+
+      // Juster sin fart med de nære sin
+      V3  desired = {0,0,0};
+      V3  steering = {};
+      int count = 0;
+      for (int j = 0; j < 50; j++) {
+        Boid *bn = &boids[j];
+        if (lenV3(subV3(b0->pos, bn->pos)) < look_radius) {
+          desired = addV3(desired, bn->vel);
+          count++;
+        }
+      }
+      desired  = scaleV3(desired, 1.0f/(float)count);
+      steering = subV3(desired, b0->vel);
+      steering = scaleV3(steering, vel_steering);
+      b0->acc  = addV3(b0->acc, steering);
+
+    
+      // Utfør kreftene
+      b0->vel = addV3(b0->vel, scaleV3(b0->acc, control));
+      if (lenV3(b0->vel) > max_speed) {
+        b0->vel = normalizeV3(b0->vel);
+        b0->vel = scaleV3(b0->vel, max_speed);
+      }
+      
+      b0->pos = addV3(b0->pos, scaleV3(b0->vel, global.dt)); // Her beregner vi at farten er /sekund, så vi multipliserer med dt :)
+      b0->acc = (V3){0}; // Nullstill krefter for hver iterasjon
+    }
+
+
+    
+    
+
+    
+    //
+    // Simuler steiner
+    //
+    
     float speed = 7.5f * global.dt;
     float y_pos = cam.pos.y; // Lagre z-posisjonen for å sette den igjen etterpå. Låser karakteren langs y-aksen.
 
@@ -555,8 +785,10 @@ int main(void) {
     
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    float aspect_ratio = (float)SCR_WIDTH / (float)SCR_HEIGHT;
     
-    
+   
     glUseProgram(main_shader.id);
     glBindVertexArray(stoneVAO);
     
@@ -577,8 +809,8 @@ int main(void) {
     setVec3(main_shader.id,  "light.direction",   light_cube.direction);
     
     // Calculate perspective
+
     perspective(cam.fov, aspect_ratio, 0.1f, 100.0f, proj);
-    //initIdM4(proj);
     setMat4(main_shader.id, "proj", proj);
     
     // Load in the vectors that are used to make the lookAt-matrix
@@ -587,7 +819,7 @@ int main(void) {
     setVec3(main_shader.id, "cam_up",    cam.up);
 
     //
-    // Beregn rotasjon for kubenl
+    // Beregn rotasjon for kuben
 
 
     // Vend bakover
@@ -597,7 +829,8 @@ int main(void) {
     // Roter med kameras retning
     float yaw       = -cam.yaw * 0.01745329251f;
     Qt    rot_round = rotationQtfs(yaw,  .0f, 1.0f, .0f);
-  
+
+
     // Spinn for steinen
     Qt spin = rotationQtfs(stone.spin,  .0f, 1.0f, .0f);
 
@@ -666,8 +899,30 @@ int main(void) {
     setMat4(main_shader.id, "model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
+    
 
-  
+    /*
+
+    //
+    // Tegn "BOID"
+    //
+    //glColor3f(0.3, 0.3, 0.3);
+    glUseProgram(boid_shader.id);
+    glPointSize(5.0f);
+
+    // Calculate perspective
+    perspective(cam.fov, aspect_ratio, 0.1f, 100.0f, proj);
+    setMat4(boid_shader.id, "proj", proj);
+
+    // Load in the vectors that are used to make the lookAt-matrix
+    setVec3(boid_shader.id, "cam_pos",   cam.pos);
+    setVec3(boid_shader.id, "cam_front", cam.front);
+    setVec3(boid_shader.id, "cam_up",    cam.up);
+    
+    glBindVertexArray(boid_vao);
+    glDrawArrays(GL_POINTS, 0, 1);
+    */
+    
     
     //
     // Tegn lys-kube
@@ -699,6 +954,70 @@ int main(void) {
     setMat4(light_shader.id, "model", model);
     glDrawArrays(GL_TRIANGLES, 0, 36);
     */
+
+    
+    //mat4 ortho_proj = {};
+    //ortho(0.0f, (float)SCR_WIDTH, 0.0f, (float)SCR_HEIGHT, -1.0f, 100.0f, ortho_proj);
+      
+    glUseProgram(fluid_debug_shader.id);
+    setFloat(fluid_debug_shader.id, "width",  (float)SCR_WIDTH);
+    setFloat(fluid_debug_shader.id, "height", (float)SCR_HEIGHT);
+    setFloat(fluid_debug_shader.id, "time", current_time);
+    glBindVertexArray(fluid_debug_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+
+    
+  
+    glUseProgram(boid_shader.id);
+
+    float a = 0.01f;
+    
+
+    
+
+    // @MERK - antar at perspektiv allerede er beregent :)
+    setMat4(boid_shader.id, "proj", proj);
+
+    // Load in the vectors that are used to make the lookAt-matrix
+    setVec3(boid_shader.id, "cam_pos",   cam.pos);
+    setVec3(boid_shader.id, "cam_front", cam.front);
+    setVec3(boid_shader.id, "cam_up",    cam.up);
+
+
+    // Her lager vi en transformasjon for å rotere sprites mot oss, men slik at vi fortsatt kan gjør projisering i shaderen senere.
+    // Dette gjøres ved å rotere de motsatt med kameraets "yaw" og "pitch"
+    
+    // Roter med kameras retning
+    yaw       = -cam.yaw * 0.0174533f + 1.5708;                // @MERK - kode kopiert fra over, bruker deklarasjonene på nytt
+    rot_round = rotationQtfs(yaw,  0.0f, 1.0f, 0.0f);
+    // Vend bakover
+    pitch    = -cam.pitch * 0.01745f;
+    rot_back = rotationQtfs(pitch,  1.0f, 0.0f, 0.0f);
+
+    // @TODO - koden under kan brukes til å rotere de om de skal "dø"
+    // spin = rotationQtfs(0.0f,  .0f, 1.0f, .0f);
+    
+    // Regn ut rotasjonen og oversett til matrise
+    rotation = mulQt(mulQt(realQt(), rot_round), rot_back);
+    QtAsM4(rotation, rotation_mat);
+
+        
+    for (int i = 0; i < 50; i++) {
+      clearM4(model);
+      initIdM4(model);
+      V3 boid_scale = {0.1f, 0.1f, 0.1f};
+      scaleM4(model, boid_scale);
+      mulM4_(model,  rotation_mat); // Roter til å peke mot oss
+      transM4(model, boids[i].pos);
+      setMat4(boid_shader.id, "model", model);
+      
+      glBindVertexArray(boid_vao);
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
+
+
+
     
     glfwSwapBuffers(window);
     glfwPollEvents();
@@ -709,13 +1028,20 @@ int main(void) {
   glfwDestroyWindow(window);
   glfwTerminate();
   exit(EXIT_SUCCESS);
-  //return 0;
 }
+
+
+
+
+
+
 
 
 
 void framebufferSizeCallback(GLFWwindow *window, int width, int height) {
   glViewport(0, 0, width, height);
+  SCR_WIDTH  = width;
+  SCR_HEIGHT = height;
 }
 
 void mouseCallback(GLFWwindow* window, double x_pos, double y_pos) {
