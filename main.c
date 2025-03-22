@@ -1,0 +1,413 @@
+
+#include <stdio.h>
+
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
+#include "read_file.h"
+#include "linalg.h"
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void mouse_callback(GLFWwindow *window, double xpos, double ypos);
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void process_input(GLFWwindow *window);
+
+typedef enum {
+    CAMERA_ORBIT,
+    CAMERA_FPS
+} CameraMode;
+
+CameraMode camera_mode = CAMERA_FPS;
+vec3 fps_pos = {0.0f, 1.0f, 2.0f}; // 1 unit above ground
+vec3 fps_front = {0.0f, 0.0f, -1.0f}; // looking forward on Z
+vec3 fps_up = {0.0f, 1.0f, 0.0f};     // global up direction
+
+
+
+float camera_angle = 0;
+
+float lastX = 400, lastY = 300;
+float yaw = -90.0f; // left/right
+float pitch = 0.0f; // up/down
+int firstMouse = 1;
+
+float cameraDistance = 2.0f;
+
+vec3 ripple_origin = {0.0f, 0.0f, 0.0f};
+float ripple_start_time = -1.0f;
+
+int main() {
+  // load glfw
+  glfwInit();
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+  // set up window
+  GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+  if (window == NULL) {
+    fprintf(stderr, "failed to create glfw window\n");
+    glfwTerminate();
+    return -1;
+  }
+  glfwMakeContextCurrent(window);
+
+  // load GLAD
+  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    fprintf(stderr, "failed to initialize GLAD\n");
+    return -1;
+  }
+
+  // set initial viewport
+  glViewport(0, 0, 800, 600);
+  glEnable(GL_DEPTH_TEST);
+
+  // set framebuffer resize callback :)
+  glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+  glfwSetCursorPosCallback(window, mouse_callback);
+  glfwSetScrollCallback(window, scroll_callback);
+  glfwSetMouseButtonCallback(window, mouse_button_callback);
+  glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+
+  // construct grid of 64x64 points with XYZ coordinates in a linear array
+  const int n_per_side = 64;
+  const int array_size = 3 * n_per_side * n_per_side;
+  printf("%d\n", array_size);
+  float points[array_size];
+  
+  float start = -1;
+  float end   = 1;
+
+  float len  = end - start;
+  float step = len / (n_per_side - 1);
+
+  const int line_count = (n_per_side - 1) * n_per_side * 2; // 2 lines per cell: horizontal + vertical
+
+  for (int x = 0; x < n_per_side; x++) {
+    for (int y = 0; y < n_per_side; y++) {
+      int i = 3 * (x + y*n_per_side);
+      points[i + 0] = -1.0f + x * step; // x
+      points[i + 1] = frand(0, 0.05);              // y
+      points[i + 2] = -1.0f + y * step; // <
+
+      //printf("%f, %f\n", points[x+y], points[x+y+1]);
+    }
+  }
+
+  const int squares_per_side = n_per_side - 1;
+  const int num_cells = squares_per_side * squares_per_side;
+  const int index_count = num_cells * 6;
+
+  GLuint indices[index_count];
+  int idx = 0;
+
+  for (int y = 0; y < squares_per_side; y++) {
+    for (int x = 0; x < squares_per_side; x++) {
+      int top_left     = y * n_per_side + x;
+      int top_right    = top_left + 1;
+      int bottom_left  = top_left + n_per_side;
+      int bottom_right = bottom_left + 1;
+
+      // Triangle 1
+      indices[idx++] = top_left;
+      indices[idx++] = bottom_left;
+      indices[idx++] = bottom_right;
+
+      // Triangle 2
+      indices[idx++] = top_left;
+      indices[idx++] = bottom_right;
+      indices[idx++] = top_right;
+    }
+  }
+
+  // create shader...
+  int  success;
+  char info_log[512];
+  // load and compile vertex shader!
+  const char* vertex_shader_code = read_file("shaders/triangle.vs");
+  unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+  printf("'%s'\n", vertex_shader_code);
+  glShaderSource(vertex_shader, 1, &vertex_shader_code, NULL);
+  glCompileShader(vertex_shader);
+
+  // check if compilation failed :)
+  glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
+  if(!success) {
+    glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
+    fprintf(stderr, "Failed compiling vertex shader: %s\n", info_log);
+    return 0;
+  }
+  
+  // load and compile fragment shader!
+  const char *fragment_shader_code = read_file("shaders/triangle.fs");
+  printf("'%s'\n", fragment_shader_code);
+  unsigned int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(fragment_shader, 1, &fragment_shader_code, NULL);
+  glCompileShader(fragment_shader);
+
+  // check if compilation failed :)
+  glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
+  if(!success) {
+    glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
+    fprintf(stderr, "Failed compiling fragment shader: %s\n", info_log);
+    return 0;
+  }
+
+  // compile entire shader program
+  unsigned int shader_program = glCreateProgram();
+  glAttachShader(shader_program, vertex_shader);
+  glAttachShader(shader_program, fragment_shader);
+  glLinkProgram(shader_program);
+
+  glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+  if(!success) {
+    glGetProgramInfoLog(shader_program, 512, NULL, info_log);
+    fprintf(stderr, "Failed linking shader program : %s\n", info_log);
+  }
+
+  // delete shaders now that program is linked!
+  //glDeleteShader(vertex_shader);
+  //glDeleteShader(fragment_shader);
+
+  // set up vertex array object....
+
+  unsigned int EBO, VAO, VBO;
+  glGenVertexArrays(1, &VAO);
+  glGenBuffers(1, &EBO);
+  glGenBuffers(1, &VBO);
+
+  glBindVertexArray(VAO);
+
+  glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glBufferData(GL_ARRAY_BUFFER, array_size*sizeof(float), points, GL_STATIC_DRAW);
+
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+  glEnableVertexAttribArray(0);
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+
+  // denote what data is in our vertex
+  // we have bound the VBO object, so it will be affected by this call
+
+  // define how to retrieve data for vertex attribute
+  // here we solely define attribute 0
+  // @NOTE this uses the bound vertex-array object
+
+  // enable this buffer B)
+
+  
+  float anglex = 0.0;
+  float anglez = 0.0;
+
+  glEnable(GL_PROGRAM_POINT_SIZE);
+  
+  // main loop
+  while (!glfwWindowShouldClose(window)) {
+    process_input(window);
+
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    //glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // render!
+    glUseProgram(shader_program);
+
+    mat4 model;
+    mat4_identity(model);
+    //mat4_rotate_x(model, anglex * (M_PI / 180.0f)); // degrees to radians
+    //mat4_rotate_z(model, anglez * (M_PI / 180.0f));
+
+    mat4 view;
+    float yaw_rad = yaw * (M_PI / 180.0f);
+    float pitch_rad = pitch * (M_PI / 180.0f);
+
+    vec3 eye = {cameraDistance * cosf(pitch_rad) * cosf(yaw_rad),
+                cameraDistance * sinf(pitch_rad),
+                cameraDistance * cosf(pitch_rad) * sinf(yaw_rad)};
+
+    //vec3_print(eye);
+
+    float radius = 2.0f;
+    float cam_x = sinf(camera_angle) * radius;
+    float cam_z = cosf(camera_angle) * radius;
+
+    //vec3 eye = {0, 0.0f, 4};     // Camera position
+    vec3 center = {0.0f, 0.0f, 0.0f};  // Where it's looking
+    vec3 up = {0.0f, 1.0f, 0.0f};      // What is "up"
+
+    if (camera_mode == CAMERA_ORBIT) {
+      mat4_lookat(eye, center, up, view);
+    } else if (camera_mode == CAMERA_FPS) {
+      vec3 center;
+      vec3_add(fps_pos, fps_front, center);
+      mat4_lookat(fps_pos, center, fps_up, view);
+    }
+    
+    mat4 projection;
+    //    mat4_ortho(-1.5f, 1.5f, -1.5f, 1.5f, 0.1f, 10.0f, projection);
+    float aspect = 800.0f / 600.0f; // use your real window size
+    mat4_perspective(45.0f, aspect, 0.1f, 100.0f, projection);
+    
+    int projection_location = glGetUniformLocation(shader_program, "projection");
+    glUniformMatrix4fv(projection_location, 1, GL_FALSE,
+                       (const float *)projection);
+    
+    int view_location = glGetUniformLocation(shader_program, "view");
+    glUniformMatrix4fv(view_location, 1, GL_FALSE, (const float *)view);
+
+    int model_location = glGetUniformLocation(shader_program, "model");
+    glUniformMatrix4fv(model_location, 1, GL_FALSE, (const float *)model);
+
+    // copy some variables to the rendering :)
+    float u_time = (float)glfwGetTime();
+
+    int ripple_origin_loc = glGetUniformLocation(shader_program, "u_ripple_origin");
+    int ripple_time_loc   = glGetUniformLocation(shader_program, "u_ripple_start_time");
+    int time_loc          = glGetUniformLocation(shader_program, "u_time");
+
+    glUniform3fv(ripple_origin_loc, 1, ripple_origin);
+    glUniform1f(ripple_time_loc, ripple_start_time);
+    glUniform1f(time_loc, u_time);
+
+    vec3_print(ripple_origin);
+
+    glBindVertexArray(VAO);
+
+    // glDrawArrays(GL_POINTS, 0, array_size / 3);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, 0);
+    
+    glfwSwapBuffers(window);
+    glfwPollEvents();    
+  }
+
+  // terminate program
+  glfwTerminate();
+  printf("Nothing's really happened like I thought it would\n");
+  return 0;
+}
+
+// on resize, simply set new bounds
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+  glViewport(0, 0, width, height);
+}
+
+
+void process_input(GLFWwindow *window) {
+  static int released = 0;
+  if(glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+    glfwSetWindowShouldClose(window, 1);
+  }
+
+  float speed = 0.03f;
+
+  if (camera_mode == CAMERA_FPS) {
+    vec3 forward, right, up = {0.0f, 1.0f, 0.0f};
+    vec3_cross(fps_front, up, right);
+    vec3_normalize(right, right);
+
+    //vec3 world_up = {0.0f, 1.0f, 0.0f}; // Y is up
+    //vec3_cross(fps_front, world_up, right);
+    //vec3_normalize(right, right);
+
+    /*
+      vec3 world_up = {0.0f, 1.0f, 0.0f}; // Y is up
+      vec3_cross(fps_front, world_up, right);
+      vec3_normalize(right, right);
+    */
+    
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+      fps_pos[0] += fps_front[0] * speed;
+      fps_pos[1] += fps_front[1] * speed;
+      fps_pos[2] += fps_front[2] * speed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+      fps_pos[0] -= fps_front[0] * speed;
+      fps_pos[1] -= fps_front[1] * speed;
+      fps_pos[2] -= fps_front[2] * speed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+      fps_pos[0] -= right[0] * speed;
+      fps_pos[1] -= right[1] * speed;
+      fps_pos[2] -= right[2] * speed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+      fps_pos[0] += right[0] * speed;
+      fps_pos[1] += right[1] * speed;
+      fps_pos[2] += right[2] * speed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+      fps_pos[1] -= speed;
+    }
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+      fps_pos[1] += speed;
+    }
+  }
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+  static float sensitivity = 0.1f;
+
+  if (firstMouse) {
+    lastX = xpos;
+    lastY = ypos;
+    firstMouse = 0;
+  }
+
+  float dx = xpos - lastX;
+  float dy = lastY - ypos; // reversed Y: up is positive
+
+  lastX = xpos;
+  lastY = ypos;
+
+  yaw   += dx * sensitivity;
+  pitch += dy * sensitivity;
+
+  // Clamp pitch to avoid flipping
+  if (pitch > 89.0f)  pitch = 89.0f;
+  if (pitch < -89.0f)
+    pitch = -89.0f;
+
+  if (camera_mode == CAMERA_FPS) {
+    // Recalculate FPS front vector
+    float yaw_rad = yaw * (M_PI / 180.0f);
+    float pitch_rad = pitch * (M_PI / 180.0f);
+
+    fps_front[0] = cosf(pitch_rad) * cosf(yaw_rad);
+    fps_front[1] = sinf(pitch_rad);
+    fps_front[2] = cosf(pitch_rad) * sinf(yaw_rad);
+
+    vec3_normalize(fps_front, fps_front);
+  }
+
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+    puts("bam");
+    double xpos, ypos;
+    glfwGetCursorPos(window, &xpos, &ypos);
+
+    // Convert screen coords to normalized device coords (NDC)
+    float ndc_x = (2.0f * xpos) / 800.0f - 1.0f;
+    float ndc_y = 1.0f - (2.0f * ypos) / 600.0f; // flip Y
+
+    // Inverse project (simple hack: assume y=0 and perspective center)
+    ripple_origin[0] = ndc_x * 1.5f;  // if terrain spans -1.5 to 1.5
+    ripple_origin[1] = 0.0f;
+    ripple_origin[2] = ndc_y * 1.5f;
+
+    ripple_start_time = (float)glfwGetTime();
+  }
+}
+
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
+  printf("%f\n", yoffset);
+  printf("%f\n", cameraDistance);
+    cameraDistance -= yoffset * 0.1f;
+    if (cameraDistance < 0.5f) cameraDistance = 0.5f;
+    if (cameraDistance > 10.0f) cameraDistance = 10.0f;
+}
