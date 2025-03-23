@@ -4,6 +4,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#define BL_IMPL
+#include "bl.h"
+
 #define READFILE_IMPL
 #include "read_file.h"
 
@@ -11,6 +14,7 @@
 #include "linalg.h"
 
 #include "thing.h"
+#include "things/waves.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -65,75 +69,9 @@ int main() {
   glfwSetMouseButtonCallback(window, mouse_button_callback);
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-
-  // construct grid of 64x64 points with XYZ coordinates in a linear array
-  const int n_per_side = 64;
-  const int array_size = 3 * n_per_side * n_per_side;
-  printf("%d\n", array_size);
-  float points[array_size];
-  
-  float start = -1;
-  float end   = 1;
-
-  float len  = end - start;
-  float step = len / (n_per_side - 1);
-
-  for (int x = 0; x < n_per_side; x++) {
-    for (int y = 0; y < n_per_side; y++) {
-      int i = 3 * (x + y*n_per_side);
-      points[i + 0] = -1.0f + x * step; // x
-      points[i + 1] = frand(0, 0.05);              // y
-      points[i + 2] = -1.0f + y * step; // <
-
-      //printf("%f, %f\n", points[x+y], points[x+y+1]);
-    }
-  }
-
-  const int squares_per_side = n_per_side - 1;
-  const int num_cells = squares_per_side * squares_per_side;
-  const int index_count = num_cells * 6;
-
-  GLuint indices[index_count];
-  int idx = 0;
-
-  for (int y = 0; y < squares_per_side; y++) {
-    for (int x = 0; x < squares_per_side; x++) {
-      int top_left     = y * n_per_side + x;
-      int top_right    = top_left + 1;
-      int bottom_left  = top_left + n_per_side;
-      int bottom_right = bottom_left + 1;
-
-      // Triangle 1
-      indices[idx++] = top_left;
-      indices[idx++] = bottom_left;
-      indices[idx++] = bottom_right;
-
-      // Triangle 2
-      indices[idx++] = top_left;
-      indices[idx++] = bottom_right;
-      indices[idx++] = top_right;
-    }
-  }
-
-  thing t;
-  compile_shader(&t, "shaders/triangle.vs", "shaders/triangle.fs");
-
-  // Set up VAO for thing
-  glGenVertexArrays(1, &t.vao);
-  glGenBuffers(1, &t.ebo);
-  glGenBuffers(1, &t.vbo);
-
-  glBindVertexArray(t.vao);
-
-  glBindBuffer(GL_ARRAY_BUFFER, t.vbo);
-  glBufferData(GL_ARRAY_BUFFER, array_size*sizeof(float), points, GL_STATIC_DRAW);
-
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-  glEnableVertexAttribArray(0);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, t.ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
+  thing waves;
+  compile_shader(&waves, "shaders/triangle.vs", "shaders/triangle.fs");
+  create_waves(&waves);
   
   // main loop
   while (!glfwWindowShouldClose(window)) {
@@ -141,30 +79,26 @@ int main() {
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(t.shader_program);
-
-    mat4 model;
-    mat4_identity(model);
-    mat4_scale(model, 10.0f, 4.0f, 10.0f);
+   
+    mat4 projection;
+    float aspect = 800.0f / 600.0f; // use your real window size
+    mat4_perspective(45.0f, aspect, 0.1f, 100.0f, projection);
 
     mat4 view;
     vec3 center;
     vec3_add(fps_pos, fps_front, center);
     mat4_lookat(fps_pos, center, fps_up, view);
+
+    mat4 model;
+    mat4_identity(model);
+    mat4_scale(model, 10.0f, 4.0f, 10.0f);
     
-    mat4 projection;
-    float aspect = 800.0f / 600.0f; // use your real window size
-    mat4_perspective(45.0f, aspect, 0.1f, 100.0f, projection);
-
-
     float time = (float)glfwGetTime();
-    set_uniforms(&t, projection, view, model, time);
-   
-    // glDrawArrays(GL_POINTS, 0, array_size / 3);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glBindVertexArray(t.vao);
-    glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, 0);
-  
+
+    glUseProgram(waves.shader_program);
+    set_uniforms(&waves, projection, view, model, time);
+    render_waves(&waves);
+ 
     // finish render!
     glfwSwapBuffers(window);
     glfwPollEvents();    

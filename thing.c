@@ -28,7 +28,7 @@ void compile_shader(thing *t, const char *vs_path, const char *fs_path) {
   // load and compile vertex shader!
   const char* vertex_shader_code = read_file(vs_path);
   unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  printf("'%s'\n", vertex_shader_code);
+  // printf("'%s'\n", vertex_shader_code);
   glShaderSource(vertex_shader, 1, &vertex_shader_code, NULL);
   glCompileShader(vertex_shader);
 
@@ -42,7 +42,7 @@ void compile_shader(thing *t, const char *vs_path, const char *fs_path) {
   
   // load and compile fragment shader!
   const char *fragment_shader_code = read_file(fs_path);
-  printf("'%s'\n", fragment_shader_code);
+  // printf("'%s'\n", fragment_shader_code);
   unsigned int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
   glShaderSource(fragment_shader, 1, &fragment_shader_code, NULL);
   glCompileShader(fragment_shader);

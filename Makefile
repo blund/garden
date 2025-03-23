@@ -1,8 +1,9 @@
 
 
 run:
-	gcc main.c thing.c glad.c  \
-		-Wall \
+	gcc main.c thing.c glad.c \
+	things/waves.c \
+		-g -Wall \
 		-Iinclude \
 		-lglfw -lGL -lX11 -lpthread -lXrandr -lXi -ldl -lm
 	./a.out

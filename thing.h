@@ -17,6 +17,8 @@ typedef struct thing {
   uint32_t ebo, vao, vbo;
   uint32_t shader_program;
 
+  void* data;
+
 } thing;
 
 void compile_shader(thing *t, const char *vs_path, const char *fs_path);

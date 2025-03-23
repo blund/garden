@@ -4,6 +4,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
+void release_assert(const char *assertionExpr,
+                    const char *assertionFile,
+                    unsigned int assertionLine,
+                    const char* assertionFunction);
+float frand(float min, float max);
+
+
+#ifdef BL_IMPL
+
 /*
   assert and read_file are stolen from the LuaJIT-Remake :)
  */
@@ -26,5 +36,7 @@ float frand(float min, float max) {
     float scale = rand() / (float) RAND_MAX; /* [0, 1.0] */
     return min + scale * ( max - min );      /* [min, max] */
 }
+
+#endif
 
 #endif
