@@ -1,3 +1,6 @@
+#ifndef BL_H
+#define BL_H
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -23,3 +26,5 @@ float frand(float min, float max) {
     float scale = rand() / (float) RAND_MAX; /* [0, 1.0] */
     return min + scale * ( max - min );      /* [min, max] */
 }
+
+#endif

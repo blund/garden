@@ -1,7 +1,8 @@
 
 
 run:
-	gcc main.c glad.c  \
+	gcc main.c thing.c glad.c  \
+		-Wall \
 		-Iinclude \
 		-lglfw -lGL -lX11 -lpthread -lXrandr -lXi -ldl -lm
 	./a.out

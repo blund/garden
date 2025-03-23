@@ -1,10 +1,15 @@
+#ifndef READ_FILE_H
+#define READ_FILE_H
+
+const char* read_file(const char* filename);
+
+#ifdef READFILE_IMPL
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-
 #include <errno.h>
 #include <string.h>
-
 #include <sys/stat.h>
 
 #include "bl.h"
@@ -49,3 +54,6 @@ const char* read_file(const char* filename) {
 
     return data;
 }
+
+#endif
+#endif

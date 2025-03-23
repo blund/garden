@@ -4,8 +4,12 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#define READFILE_IMPL
 #include "read_file.h"
+
 #include "linalg.h"
+
+#include "thing.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -73,8 +77,6 @@ int main() {
   float len  = end - start;
   float step = len / (n_per_side - 1);
 
-  const int line_count = (n_per_side - 1) * n_per_side * 2; // 2 lines per cell: horizontal + vertical
-
   for (int x = 0; x < n_per_side; x++) {
     for (int y = 0; y < n_per_side; y++) {
       int i = 3 * (x + y*n_per_side);
@@ -112,78 +114,25 @@ int main() {
     }
   }
 
-  // create shader...
-  int  success;
-  char info_log[512];
-  // load and compile vertex shader!
-  const char* vertex_shader_code = read_file("shaders/triangle.vs");
-  unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  printf("'%s'\n", vertex_shader_code);
-  glShaderSource(vertex_shader, 1, &vertex_shader_code, NULL);
-  glCompileShader(vertex_shader);
+  thing t;
+  compile_shader(&t, "shaders/triangle.vs", "shaders/triangle.fs");
 
-  // check if compilation failed :)
-  glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-  if(!success) {
-    glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
-    fprintf(stderr, "Failed compiling vertex shader: %s\n", info_log);
-    return 0;
-  }
-  
-  // load and compile fragment shader!
-  const char *fragment_shader_code = read_file("shaders/triangle.fs");
-  printf("'%s'\n", fragment_shader_code);
-  unsigned int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragment_shader, 1, &fragment_shader_code, NULL);
-  glCompileShader(fragment_shader);
+  // Set up VAO for thing
+  glGenVertexArrays(1, &t.vao);
+  glGenBuffers(1, &t.ebo);
+  glGenBuffers(1, &t.vbo);
 
-  // check if compilation failed :)
-  glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-  if(!success) {
-    glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
-    fprintf(stderr, "Failed compiling fragment shader: %s\n", info_log);
-    return 0;
-  }
+  glBindVertexArray(t.vao);
 
-  // compile entire shader program
-  unsigned int shader_program = glCreateProgram();
-  glAttachShader(shader_program, vertex_shader);
-  glAttachShader(shader_program, fragment_shader);
-  glLinkProgram(shader_program);
-
-  glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
-  if(!success) {
-    glGetProgramInfoLog(shader_program, 512, NULL, info_log);
-    fprintf(stderr, "Failed linking shader program : %s\n", info_log);
-  }
-
-  // delete shaders now that program is linked!
-  glDeleteShader(vertex_shader);
-  glDeleteShader(fragment_shader);
-
-  // set up vertex array object....
-
-  unsigned int EBO, VAO, VBO;
-  glGenVertexArrays(1, &VAO);
-  glGenBuffers(1, &EBO);
-  glGenBuffers(1, &VBO);
-
-  glBindVertexArray(VAO);
-
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glBindBuffer(GL_ARRAY_BUFFER, t.vbo);
   glBufferData(GL_ARRAY_BUFFER, array_size*sizeof(float), points, GL_STATIC_DRAW);
 
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
   glEnableVertexAttribArray(0);
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, t.ebo);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-  
-  float anglex = 0.0;
-  float anglez = 0.0;
-
-  glEnable(GL_PROGRAM_POINT_SIZE);
   
   // main loop
   while (!glfwWindowShouldClose(window)) {
@@ -191,19 +140,10 @@ int main() {
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(shader_program);
+    glUseProgram(t.shader_program);
 
     mat4 model;
     mat4_identity(model);
-
-    vec3 eye;
-    float yaw_rad = yaw * (M_PI / 180.0f);
-    float pitch_rad = pitch * (M_PI / 180.0f);
-    eye[0] = cameraDistance * cosf(pitch_rad) * cosf(yaw_rad);
-    eye[1] = cameraDistance * sinf(pitch_rad);
-    eye[2] = cameraDistance * cosf(pitch_rad) * sinf(yaw_rad);
-
-    vec3 up = {0.0f, 1.0f, 0.0f};      // What is "up"
 
     mat4 view;
     vec3 center;
@@ -213,6 +153,8 @@ int main() {
     mat4 projection;
     float aspect = 800.0f / 600.0f; // use your real window size
     mat4_perspective(45.0f, aspect, 0.1f, 100.0f, projection);
+
+    uint32_t shader_program = t.shader_program;
     
     int projection_location = glGetUniformLocation(shader_program, "projection");
     glUniformMatrix4fv(projection_location, 1, GL_FALSE,
@@ -231,7 +173,7 @@ int main() {
 
     // glDrawArrays(GL_POINTS, 0, array_size / 3);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glBindVertexArray(VAO);
+    glBindVertexArray(t.vao);
     glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, 0);
   
     // finish render!
@@ -252,14 +194,13 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 
 
 void process_input(GLFWwindow *window) {
-  static int released = 0;
   if(glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, 1);
   }
 
   float speed = 0.03f;
 
-    vec3 forward, right, up = {0.0f, 1.0f, 0.0f};
+    vec3 right, up = {0.0f, 1.0f, 0.0f};
     vec3_cross(fps_front, up, right);
     vec3_normalize(right, right);
    
