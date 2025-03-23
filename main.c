@@ -13,29 +13,19 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void process_input(GLFWwindow *window);
 
-typedef enum {
-    CAMERA_ORBIT,
-    CAMERA_FPS
-} CameraMode;
-
-CameraMode camera_mode = CAMERA_FPS;
 vec3 fps_pos = {0.0f, 1.0f, 2.0f}; // 1 unit above ground
 vec3 fps_front = {0.0f, 0.0f, -1.0f}; // looking forward on Z
 vec3 fps_up = {0.0f, 1.0f, 0.0f};     // global up direction
-
-
 
 float camera_angle = 0;
 
 float lastX = 400, lastY = 300;
 float yaw = -90.0f; // left/right
 float pitch = 0.0f; // up/down
+
 int firstMouse = 1;
 
 float cameraDistance = 2.0f;
-
-vec3 ripple_origin = {0.0f, 0.0f, 0.0f};
-float ripple_start_time = -1.0f;
 
 int main() {
   // load glfw
@@ -168,8 +158,8 @@ int main() {
   }
 
   // delete shaders now that program is linked!
-  //glDeleteShader(vertex_shader);
-  //glDeleteShader(fragment_shader);
+  glDeleteShader(vertex_shader);
+  glDeleteShader(fragment_shader);
 
   // set up vertex array object....
 
@@ -189,16 +179,6 @@ int main() {
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-
-  // denote what data is in our vertex
-  // we have bound the VBO object, so it will be affected by this call
-
-  // define how to retrieve data for vertex attribute
-  // here we solely define attribute 0
-  // @NOTE this uses the bound vertex-array object
-
-  // enable this buffer B)
-
   
   float anglex = 0.0;
   float anglez = 0.0;
@@ -210,44 +190,27 @@ int main() {
     process_input(window);
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    //glClear(GL_COLOR_BUFFER_BIT);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    // render!
     glUseProgram(shader_program);
 
     mat4 model;
     mat4_identity(model);
-    //mat4_rotate_x(model, anglex * (M_PI / 180.0f)); // degrees to radians
-    //mat4_rotate_z(model, anglez * (M_PI / 180.0f));
 
-    mat4 view;
+    vec3 eye;
     float yaw_rad = yaw * (M_PI / 180.0f);
     float pitch_rad = pitch * (M_PI / 180.0f);
+    eye[0] = cameraDistance * cosf(pitch_rad) * cosf(yaw_rad);
+    eye[1] = cameraDistance * sinf(pitch_rad);
+    eye[2] = cameraDistance * cosf(pitch_rad) * sinf(yaw_rad);
 
-    vec3 eye = {cameraDistance * cosf(pitch_rad) * cosf(yaw_rad),
-                cameraDistance * sinf(pitch_rad),
-                cameraDistance * cosf(pitch_rad) * sinf(yaw_rad)};
-
-    //vec3_print(eye);
-
-    float radius = 2.0f;
-    float cam_x = sinf(camera_angle) * radius;
-    float cam_z = cosf(camera_angle) * radius;
-
-    //vec3 eye = {0, 0.0f, 4};     // Camera position
-    vec3 center = {0.0f, 0.0f, 0.0f};  // Where it's looking
     vec3 up = {0.0f, 1.0f, 0.0f};      // What is "up"
 
-    if (camera_mode == CAMERA_ORBIT) {
-      mat4_lookat(eye, center, up, view);
-    } else if (camera_mode == CAMERA_FPS) {
-      vec3 center;
-      vec3_add(fps_pos, fps_front, center);
-      mat4_lookat(fps_pos, center, fps_up, view);
-    }
+    mat4 view;
+    vec3 center;
+    vec3_add(fps_pos, fps_front, center);
+    mat4_lookat(fps_pos, center, fps_up, view);
     
     mat4 projection;
-    //    mat4_ortho(-1.5f, 1.5f, -1.5f, 1.5f, 0.1f, 10.0f, projection);
     float aspect = 800.0f / 600.0f; // use your real window size
     mat4_perspective(45.0f, aspect, 0.1f, 100.0f, projection);
     
@@ -261,25 +224,17 @@ int main() {
     int model_location = glGetUniformLocation(shader_program, "model");
     glUniformMatrix4fv(model_location, 1, GL_FALSE, (const float *)model);
 
-    // copy some variables to the rendering :)
-    float u_time = (float)glfwGetTime();
+    float time = (float)glfwGetTime();
+    int time_location = glGetUniformLocation(shader_program, "u_time");
+    glUniform1f(time_location, time);
 
-    int ripple_origin_loc = glGetUniformLocation(shader_program, "u_ripple_origin");
-    int ripple_time_loc   = glGetUniformLocation(shader_program, "u_ripple_start_time");
-    int time_loc          = glGetUniformLocation(shader_program, "u_time");
-
-    glUniform3fv(ripple_origin_loc, 1, ripple_origin);
-    glUniform1f(ripple_time_loc, ripple_start_time);
-    glUniform1f(time_loc, u_time);
-
-    vec3_print(ripple_origin);
-
-    glBindVertexArray(VAO);
 
     // glDrawArrays(GL_POINTS, 0, array_size / 3);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, 0);
-    
+  
+    // finish render!
     glfwSwapBuffers(window);
     glfwPollEvents();    
   }
@@ -304,21 +259,10 @@ void process_input(GLFWwindow *window) {
 
   float speed = 0.03f;
 
-  if (camera_mode == CAMERA_FPS) {
     vec3 forward, right, up = {0.0f, 1.0f, 0.0f};
     vec3_cross(fps_front, up, right);
     vec3_normalize(right, right);
-
-    //vec3 world_up = {0.0f, 1.0f, 0.0f}; // Y is up
-    //vec3_cross(fps_front, world_up, right);
-    //vec3_normalize(right, right);
-
-    /*
-      vec3 world_up = {0.0f, 1.0f, 0.0f}; // Y is up
-      vec3_cross(fps_front, world_up, right);
-      vec3_normalize(right, right);
-    */
-    
+   
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
       fps_pos[0] += fps_front[0] * speed;
       fps_pos[1] += fps_front[1] * speed;
@@ -345,7 +289,6 @@ void process_input(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
       fps_pos[1] += speed;
     }
-  }
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
@@ -371,43 +314,27 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
   if (pitch < -89.0f)
     pitch = -89.0f;
 
-  if (camera_mode == CAMERA_FPS) {
-    // Recalculate FPS front vector
-    float yaw_rad = yaw * (M_PI / 180.0f);
-    float pitch_rad = pitch * (M_PI / 180.0f);
+  // Recalculate FPS front vector
+  float yaw_rad = yaw * (M_PI / 180.0f);
+  float pitch_rad = pitch * (M_PI / 180.0f);
 
-    fps_front[0] = cosf(pitch_rad) * cosf(yaw_rad);
-    fps_front[1] = sinf(pitch_rad);
-    fps_front[2] = cosf(pitch_rad) * sinf(yaw_rad);
+  fps_front[0] = cosf(pitch_rad) * cosf(yaw_rad);
+  fps_front[1] = sinf(pitch_rad);
+  fps_front[2] = cosf(pitch_rad) * sinf(yaw_rad);
 
-    vec3_normalize(fps_front, fps_front);
-  }
-
+  vec3_normalize(fps_front, fps_front);
 }
 
+// Add this to your mouse_button_callback to replace the existing logic
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
   if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-    puts("bam");
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
-
-    // Convert screen coords to normalized device coords (NDC)
-    float ndc_x = (2.0f * xpos) / 800.0f - 1.0f;
-    float ndc_y = 1.0f - (2.0f * ypos) / 600.0f; // flip Y
-
-    // Inverse project (simple hack: assume y=0 and perspective center)
-    ripple_origin[0] = ndc_x * 1.5f;  // if terrain spans -1.5 to 1.5
-    ripple_origin[1] = 0.0f;
-    ripple_origin[2] = ndc_y * 1.5f;
-
-    ripple_start_time = (float)glfwGetTime();
+    puts("click");
   }
 }
 
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
-  printf("%f\n", yoffset);
   printf("%f\n", cameraDistance);
-    cameraDistance -= yoffset * 0.1f;
-    if (cameraDistance < 0.5f) cameraDistance = 0.5f;
-    if (cameraDistance > 10.0f) cameraDistance = 10.0f;
+  cameraDistance -= yoffset * 0.1f;
+  if (cameraDistance < 0.5f) cameraDistance = 0.5f;
+  if (cameraDistance > 10.0f) cameraDistance = 10.0f;
 }

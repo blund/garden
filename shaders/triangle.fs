@@ -8,7 +8,7 @@ vec3 peak_color = vec3(0.2, 0.8, 1.0);   // shallow water
 
 void main()
 {
-  float height = smoothstep(0.0, 0.4, frag_pos.y);
+  float height = smoothstep(0.0, 0.25, frag_pos.y);
 
   vec3 color = mix(base_color, peak_color, height);
   

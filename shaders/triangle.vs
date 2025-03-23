@@ -7,8 +7,6 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-uniform vec3  u_ripple_origin;
-uniform float u_ripple_start_time;
 uniform float u_time;
 
 
@@ -19,7 +17,10 @@ void main() {
   
   //pos.y += 0.03 * sin(5.0 * pos.x + u_time) * cos(5.0 * pos.z + u_time*0.7);
   //pos.y += 0.03 * sin(5.0 * pos.x + u_time*1.6) * cos(5.0 * pos.z + u_time*1.2);
-
+  pos.y += 0.03 * sin(1.0 * pos.x + u_time/2) * cos(1.0 * pos.z + u_time/2);
+  pos.y += 0.02 * sin(3.0 * pos.x + u_time*1) * cos(3.0 * pos.z + u_time*1);
+  pos.y += 0.02 * sin(8.0 * pos.x + u_time*1.5) * cos(8.0 * pos.z + u_time*1.5);
+  /*
   if (u_ripple_start_time >= 0.0) {
     float ripple_time = u_time - u_ripple_start_time;
     float dist = distance(pos.xz, u_ripple_origin.xz);
@@ -30,6 +31,7 @@ void main() {
 
     pos.y += 0.5 * wave;
   }
+  */
 
   gl_Position = projection * view * model * vec4(pos, 1.0);
   frag_pos = pos.xyz;

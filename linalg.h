@@ -3,10 +3,16 @@
 #include "string.h"
 
 typedef float mat4[4][4];
+typedef float vec4[4];
 typedef float vec3[3];
 
 
 // vec3 funs
+void vec4_to_vec3(const vec4 v4, vec3 v3) {
+    v3[0] = v4[0];
+    v3[1] = v4[1];
+    v3[2] = v4[2];
+}
 
 void vec3_print(const vec3 v) {
     printf("vec3: [%.3f, %.3f, %.3f]\n", v[0], v[1], v[2]);
@@ -146,4 +152,156 @@ void mat4_print(mat4 m) {
     for (int i = 0; i < 4; i++) {
         printf("| %6.2f %6.2f %6.2f %6.2f |\n", m[0][i], m[1][i], m[2][i], m[3][i]);
     }
+}
+
+void mat4_mul_vec4(const mat4 m, const vec4 v, vec4 out) {
+    for (int i = 0; i < 4; ++i) {
+        out[i] = m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2] + m[i][3] * v[3];
+    }
+}
+
+void mat4_invert_view(const mat4 view, mat4 out) {
+    // Transpose the rotation part
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            out[i][j] = view[j][i];
+
+    // Invert the translation
+    out[0][3] = -(out[0][0]*view[0][3] + out[0][1]*view[1][3] + out[0][2]*view[2][3]);
+    out[1][3] = -(out[1][0]*view[0][3] + out[1][1]*view[1][3] + out[1][2]*view[2][3]);
+    out[2][3] = -(out[2][0]*view[0][3] + out[2][1]*view[1][3] + out[2][2]*view[2][3]);
+
+    // Last row is always (0, 0, 0, 1)
+    out[3][0] = out[3][1] = out[3][2] = 0.0f;
+    out[3][3] = 1.0f;
+}
+
+// General-purpose 4x4 matrix inversion
+int mat4_invert(const mat4 m, mat4 out) {
+    float inv[16], det;
+    const float* mat = (const float*)m;
+
+    inv[0] = mat[5]  * mat[10] * mat[15] - 
+             mat[5]  * mat[11] * mat[14] - 
+             mat[9]  * mat[6]  * mat[15] + 
+             mat[9]  * mat[7]  * mat[14] + 
+             mat[13] * mat[6]  * mat[11] - 
+             mat[13] * mat[7]  * mat[10];
+
+    inv[4] = -mat[4]  * mat[10] * mat[15] + 
+              mat[4]  * mat[11] * mat[14] + 
+              mat[8]  * mat[6]  * mat[15] - 
+              mat[8]  * mat[7]  * mat[14] - 
+              mat[12] * mat[6]  * mat[11] + 
+              mat[12] * mat[7]  * mat[10];
+
+    inv[8] = mat[4]  * mat[9] * mat[15] - 
+             mat[4]  * mat[11] * mat[13] - 
+             mat[8]  * mat[5] * mat[15] + 
+             mat[8]  * mat[7] * mat[13] + 
+             mat[12] * mat[5] * mat[11] - 
+             mat[12] * mat[7] * mat[9];
+
+    inv[12] = -mat[4]  * mat[9] * mat[14] + 
+               mat[4]  * mat[10] * mat[13] + 
+               mat[8]  * mat[5] * mat[14] - 
+               mat[8]  * mat[6] * mat[13] - 
+               mat[12] * mat[5] * mat[10] + 
+               mat[12] * mat[6] * mat[9];
+
+    inv[1] = -mat[1]  * mat[10] * mat[15] + 
+              mat[1]  * mat[11] * mat[14] + 
+              mat[9]  * mat[2] * mat[15] - 
+              mat[9]  * mat[3] * mat[14] - 
+              mat[13] * mat[2] * mat[11] + 
+              mat[13] * mat[3] * mat[10];
+
+    inv[5] = mat[0]  * mat[10] * mat[15] - 
+             mat[0]  * mat[11] * mat[14] - 
+             mat[8]  * mat[2] * mat[15] + 
+             mat[8]  * mat[3] * mat[14] + 
+             mat[12] * mat[2] * mat[11] - 
+             mat[12] * mat[3] * mat[10];
+
+    inv[9] = -mat[0]  * mat[9] * mat[15] + 
+              mat[0]  * mat[11] * mat[13] + 
+              mat[8]  * mat[1] * mat[15] - 
+              mat[8]  * mat[3] * mat[13] - 
+              mat[12] * mat[1] * mat[11] + 
+              mat[12] * mat[3] * mat[9];
+
+    inv[13] = mat[0]  * mat[9] * mat[14] - 
+              mat[0]  * mat[10] * mat[13] - 
+              mat[8]  * mat[1] * mat[14] + 
+              mat[8]  * mat[2] * mat[13] + 
+              mat[12] * mat[1] * mat[10] - 
+              mat[12] * mat[2] * mat[9];
+
+    inv[2] = mat[1]  * mat[6] * mat[15] - 
+             mat[1]  * mat[7] * mat[14] - 
+             mat[5]  * mat[2] * mat[15] + 
+             mat[5]  * mat[3] * mat[14] + 
+             mat[13] * mat[2] * mat[7] - 
+             mat[13] * mat[3] * mat[6];
+
+    inv[6] = -mat[0]  * mat[6] * mat[15] + 
+              mat[0]  * mat[7] * mat[14] + 
+              mat[4]  * mat[2] * mat[15] - 
+              mat[4]  * mat[3] * mat[14] - 
+              mat[12] * mat[2] * mat[7] + 
+              mat[12] * mat[3] * mat[6];
+
+    inv[10] = mat[0]  * mat[5] * mat[15] - 
+              mat[0]  * mat[7] * mat[13] - 
+              mat[4]  * mat[1] * mat[15] + 
+              mat[4]  * mat[3] * mat[13] + 
+              mat[12] * mat[1] * mat[7] - 
+              mat[12] * mat[3] * mat[5];
+
+    inv[14] = -mat[0]  * mat[5] * mat[14] + 
+               mat[0]  * mat[6] * mat[13] + 
+               mat[4]  * mat[1] * mat[14] - 
+               mat[4]  * mat[2] * mat[13] - 
+               mat[12] * mat[1] * mat[6] + 
+               mat[12] * mat[2] * mat[5];
+
+    inv[3] = -mat[1] * mat[6] * mat[11] + 
+              mat[1] * mat[7] * mat[10] + 
+              mat[5] * mat[2] * mat[11] - 
+              mat[5] * mat[3] * mat[10] - 
+              mat[9] * mat[2] * mat[7] + 
+              mat[9] * mat[3] * mat[6];
+
+    inv[7] = mat[0] * mat[6] * mat[11] - 
+             mat[0] * mat[7] * mat[10] - 
+             mat[4] * mat[2] * mat[11] + 
+             mat[4] * mat[3] * mat[10] + 
+             mat[8] * mat[2] * mat[7] - 
+             mat[8] * mat[3] * mat[6];
+
+    inv[11] = -mat[0] * mat[5] * mat[11] + 
+               mat[0] * mat[7] * mat[9] + 
+               mat[4] * mat[1] * mat[11] - 
+               mat[4] * mat[3] * mat[9] - 
+               mat[8] * mat[1] * mat[7] + 
+               mat[8] * mat[3] * mat[5];
+
+    inv[15] = mat[0] * mat[5] * mat[10] - 
+              mat[0] * mat[6] * mat[9] - 
+              mat[4] * mat[1] * mat[10] + 
+              mat[4] * mat[2] * mat[9] + 
+              mat[8] * mat[1] * mat[6] - 
+              mat[8] * mat[2] * mat[5];
+
+    det = mat[0] * inv[0] + mat[1] * inv[4] + mat[2] * inv[8] + mat[3] * inv[12];
+
+    if (det == 0.0f)
+        return 0;
+
+    det = 1.0f / det;
+
+    for (int i = 0; i < 16; i++)
+        ((float*)out)[i] = inv[i] * det;
+
+    return 1;
 }
