@@ -1,3 +1,7 @@
+#ifndef LINALG_H
+#define LINALG_H
+
+
 #include "stdio.h"
 #include "math.h"
 #include "string.h"
@@ -6,6 +10,27 @@ typedef float mat4[4][4];
 typedef float vec4[4];
 typedef float vec3[3];
 
+void vec4_to_vec3(const vec4 v4, vec3 v3);
+void vec3_print(const vec3 v);
+void vec3_add(const vec3 a, const vec3 b, vec3 out);
+void vec3_sub(const vec3 a, const vec3 b, vec3 out);
+void vec3_normalize(const vec3 v, vec3 out);
+void vec3_cross(const vec3 a, const vec3 b, vec3 out);
+float vec3_dot(const vec3 a, const vec3 b);
+void mat4_identity(mat4 m);
+void mat4_mul(mat4 result, mat4 a, mat4 b);
+void mat4_rotate_x(mat4 m, float angle_rad);
+void mat4_rotate_z(mat4 m, float angle_rad);
+void mat4_lookat(vec3 eye, vec3 center, vec3 up, mat4 out);
+void mat4_ortho(float left, float right, float bottom, float top, float near, float far, mat4 out);
+void mat4_perspective(float fov_deg, float aspect, float near, float far, mat4 out);
+void mat4_print(mat4 m);
+void mat4_mul_vec4(const mat4 m, const vec4 v, vec4 out);
+void mat4_scale(mat4 m, float sx, float sy, float sz);
+
+
+
+#ifdef LINALG_IMPL
 
 // vec3 funs
 void vec4_to_vec3(const vec4 v4, vec3 v3) {
@@ -159,3 +184,12 @@ void mat4_mul_vec4(const mat4 m, const vec4 v, vec4 out) {
         out[i] = m[i][0] * v[0] + m[i][1] * v[1] + m[i][2] * v[2] + m[i][3] * v[3];
     }
 }
+
+void mat4_scale(mat4 m, float sx, float sy, float sz) {
+    m[0][0] *= sx;
+    m[1][1] *= sy;
+    m[2][2] *= sz;
+}
+
+#endif
+#endif

@@ -7,6 +7,7 @@
 #define READFILE_IMPL
 #include "read_file.h"
 
+#define LINALG_IMPL
 #include "linalg.h"
 
 #include "thing.h"
@@ -17,7 +18,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void process_input(GLFWwindow *window);
 
-vec3 fps_pos = {0.0f, 0.5f, 2.0f}; // 1 unit above ground
+vec3 fps_pos = {0.0f, 0.8f, 10.0f}; // 1 unit above ground
 vec3 fps_front = {0.0f, 0.0f, -1.0f}; // looking forward on Z
 vec3 fps_up = {0.0f, 1.0f, 0.0f};     // global up direction
 
@@ -144,6 +145,7 @@ int main() {
 
     mat4 model;
     mat4_identity(model);
+    mat4_scale(model, 10.0f, 4.0f, 10.0f);
 
     mat4 view;
     vec3 center;
@@ -154,23 +156,10 @@ int main() {
     float aspect = 800.0f / 600.0f; // use your real window size
     mat4_perspective(45.0f, aspect, 0.1f, 100.0f, projection);
 
-    uint32_t shader_program = t.shader_program;
-    
-    int projection_location = glGetUniformLocation(shader_program, "projection");
-    glUniformMatrix4fv(projection_location, 1, GL_FALSE,
-                       (const float *)projection);
-    
-    int view_location = glGetUniformLocation(shader_program, "view");
-    glUniformMatrix4fv(view_location, 1, GL_FALSE, (const float *)view);
-
-    int model_location = glGetUniformLocation(shader_program, "model");
-    glUniformMatrix4fv(model_location, 1, GL_FALSE, (const float *)model);
 
     float time = (float)glfwGetTime();
-    int time_location = glGetUniformLocation(shader_program, "u_time");
-    glUniform1f(time_location, time);
-
-
+    set_uniforms(&t, projection, view, model, time);
+   
     // glDrawArrays(GL_POINTS, 0, array_size / 3);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glBindVertexArray(t.vao);

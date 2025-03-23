@@ -1,7 +1,25 @@
 #include "stdlib.h"
 
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
 #include "read_file.h"
 #include "thing.h"
+
+void set_uniforms(thing *t, mat4 projection, mat4 view, mat4 model, float time) {
+  int projection_location = glGetUniformLocation(t->shader_program, "projection");
+  glUniformMatrix4fv(projection_location, 1, GL_FALSE,
+		     (const float *)projection);
+    
+  int view_location = glGetUniformLocation(t->shader_program, "view");
+  glUniformMatrix4fv(view_location, 1, GL_FALSE, (const float *)view);
+
+  int model_location = glGetUniformLocation(t->shader_program, "model");
+  glUniformMatrix4fv(model_location, 1, GL_FALSE, (const float *)model);
+
+  int time_location = glGetUniformLocation(t->shader_program, "u_time");
+  glUniform1f(time_location, time);
+}
 
 void compile_shader(thing *t, const char *vs_path, const char *fs_path) {
   // create shader...
