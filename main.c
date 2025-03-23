@@ -41,7 +41,7 @@ int main() {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   // set up window
-  GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(800, 600, "Welcome to the Garden", NULL, NULL);
   if (window == NULL) {
     fprintf(stderr, "failed to create glfw window\n");
     glfwTerminate();
