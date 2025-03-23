@@ -17,7 +17,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void process_input(GLFWwindow *window);
 
-vec3 fps_pos = {0.0f, 1.0f, 2.0f}; // 1 unit above ground
+vec3 fps_pos = {0.0f, 0.5f, 2.0f}; // 1 unit above ground
 vec3 fps_front = {0.0f, 0.0f, -1.0f}; // looking forward on Z
 vec3 fps_up = {0.0f, 1.0f, 0.0f};     // global up direction
 
