@@ -1,11 +1,6 @@
 #ifndef LINALG_H
 #define LINALG_H
 
-
-#include "stdio.h"
-#include "math.h"
-#include "string.h"
-
 typedef float mat4[4][4];
 typedef float vec4[4];
 typedef float vec3[3];
@@ -31,6 +26,10 @@ void mat4_scale(mat4 m, float sx, float sy, float sz);
 
 
 #ifdef LINALG_IMPL
+
+#include "stdio.h"
+#include "math.h"
+#include "string.h"
 
 // vec3 funs
 void vec4_to_vec3(const vec4 v4, vec3 v3) {

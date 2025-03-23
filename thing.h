@@ -3,10 +3,9 @@
 
 #include "stdint.h"
 
-#include <glad/glad.h>
-
 #include "linalg.h"
 
+// @TODO this should be generated from the file in things..
 typedef enum {
     THING_TYPE_WAVES,
 } thing_type;

@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 
-#include <glad/glad.h>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #define BL_IMPL
@@ -19,7 +19,6 @@
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void process_input(GLFWwindow *window);
 
 vec3 fps_pos = {0.0f, 0.8f, 10.0f}; // 1 unit above ground
@@ -33,8 +32,6 @@ float yaw = -90.0f; // left/right
 float pitch = 0.0f; // up/down
 
 int firstMouse = 1;
-
-float cameraDistance = 2.0f;
 
 int main() {
   // load glfw
@@ -52,12 +49,12 @@ int main() {
   }
   glfwMakeContextCurrent(window);
 
-  // load GLAD
-  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-    fprintf(stderr, "failed to initialize GLAD\n");
+  glewExperimental = GL_TRUE; // Needed for core profile
+  if (glewInit() != GLEW_OK) {
+    fprintf(stderr, "Failed to initialize GLEW\n");
     return -1;
   }
-
+  
   // set initial viewport
   glViewport(0, 0, 800, 600);
   glEnable(GL_DEPTH_TEST);
@@ -65,7 +62,6 @@ int main() {
   // set framebuffer resize callback :)
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
   glfwSetCursorPosCallback(window, mouse_callback);
-  glfwSetScrollCallback(window, scroll_callback);
   glfwSetMouseButtonCallback(window, mouse_button_callback);
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -194,11 +190,4 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
   if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
     puts("click");
   }
-}
-
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
-  printf("%f\n", cameraDistance);
-  cameraDistance -= yoffset * 0.1f;
-  if (cameraDistance < 0.5f) cameraDistance = 0.5f;
-  if (cameraDistance > 10.0f) cameraDistance = 10.0f;
 }

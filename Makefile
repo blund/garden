@@ -1,15 +1,19 @@
 
 
 run:
-	gcc main.c thing.c glad.c \
-	things/waves.c \
+	gcc main.c thing.c things/waves.c \
 		-g -Wall \
 		-Iinclude \
-		-lglfw -lGL -lX11 -lpthread -lXrandr -lXi -ldl -lm
+		-lGL -lGLEW -lglfw -lX11 -lpthread -lXrandr -lXi -ldl -lm
 	./a.out
 
-setup:
-	curl --output glad.zip https://glad.dav1d.de/#language=c&specification=gl&api=gl%3D4.0&api=gles1%3Dnone&api=gles2%3Dnone&api=glsc2%3Dnone&profile=core&loader=on
-	unzip glad.zip
-	rm glad.zip
-
+emscripten:
+	/usr/lib/emscripten/emcc emmain.c thing.c things/waves.c -o index.html \
+	-s USE_GLFW=3 \
+	-s USE_WEBGL2=1 \
+	-s FULL_ES3=1 \
+	-s ALLOW_MEMORY_GROWTH=1 \
+	-s WASM=1 \
+	-s ASSERTIONS \
+	--preload-file shaders \
+	-O2

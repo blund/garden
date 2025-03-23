@@ -1,7 +1,7 @@
 #include "stdint.h"
 #include "malloc.h"
 
-#include <glad/glad.h>
+#include <GL/glew.h>
 
 #include "../bl.h"
 #include "waves.h"
@@ -10,7 +10,7 @@ void create_waves(thing *t) {
   waves *w = w = malloc(sizeof(waves));
 
   t->data = w;
-  //t->type = THING_TYPE_WAVES;
+  t->type = THING_TYPE_WAVES;
 
   const int n_per_side = 64;
   const int array_size = 3 * n_per_side * n_per_side;
@@ -35,8 +35,8 @@ void create_waves(thing *t) {
     for (int y = 0; y < n_per_side; y++) {
       int i = 3 * (x + y*n_per_side);
       w->points[i + 0] = -1.0f + x * step; // x
-      w->points[i + 1] = frand(0, 0.05);              // y
-      w->points[i + 2] = -1.0f + y * step; // <
+      w->points[i + 1] = frand(0, 0.05); // y
+      w->points[i + 2] = -1.0f + y * step; // z
     }
   }
 
@@ -81,12 +81,12 @@ void bind_waves(thing *t) {
   glEnableVertexAttribArray(0);
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, t->ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, w->n_indices*sizeof(float), w->indices, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, w->n_indices*sizeof(uint32_t), w->indices, GL_STATIC_DRAW);
 }
 
 void render_waves(thing *t) {
   // glDrawArrays(GL_POINTS, 0, array_size / 3);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   glBindVertexArray(t->vao);
   glDrawElements(GL_TRIANGLES, ((waves*)t->data)->n_indices, GL_UNSIGNED_INT, 0);
   
