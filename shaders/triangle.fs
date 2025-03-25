@@ -1,6 +1,7 @@
 #version 330 core
 
 in vec3 frag_pos;
+in float ripple_amp;
 out vec4 frag_color;
 
 vec3 base_color = vec3(0.0, 0.2, 0.4);   // deep water
@@ -13,5 +14,5 @@ void main()
   vec3 color = mix(base_color, peak_color, height);
   
   frag_color = vec4(color, 1.0); //vec4(1.0f, frag_pos.y*10.0f, 1.0f, 1.0f);
-  //FragColor = vec4(frag_pos * 0.5 + 0.5, 1.0);
 }
+

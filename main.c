@@ -15,11 +15,17 @@
 
 #include "thing.h"
 #include "things/waves.h"
+#include "things/raycast.h"
+
+#include "state.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 void process_input(GLFWwindow *window);
+
+int screen_width = 800;
+int screen_height = 600;
 
 vec3 fps_pos = {0.0f, 0.8f, 10.0f}; // 1 unit above ground
 vec3 fps_front = {0.0f, 0.0f, -1.0f}; // looking forward on Z
@@ -27,11 +33,18 @@ vec3 fps_up = {0.0f, 1.0f, 0.0f};     // global up direction
 
 float camera_angle = 0;
 
-float lastX = 400, lastY = 300;
+float last_mouse_x = 400, last_mouse_y = 300;
 float yaw = -90.0f; // left/right
 float pitch = 0.0f; // up/down
 
 int firstMouse = 1;
+
+thing ray_thing;
+
+float ripple_start_time = 0;
+vec3 ripple_origin;
+
+global_state state;
 
 int main() {
   // load glfw
@@ -41,7 +54,7 @@ int main() {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   // set up window
-  GLFWwindow* window = glfwCreateWindow(800, 600, "Welcome to the Garden", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(screen_width, screen_height, "Welcome to the Garden", NULL, NULL);
   if (window == NULL) {
     fprintf(stderr, "failed to create glfw window\n");
     glfwTerminate();
@@ -68,7 +81,10 @@ int main() {
   thing waves;
   compile_shader(&waves, "shaders/triangle.vs", "shaders/triangle.fs");
   create_waves(&waves);
-  
+
+  compile_shader(&ray_thing, "shaders/raycast.vs", "shaders/raycast.fs");
+  create_raycast(&ray_thing);
+
   // main loop
   while (!glfwWindowShouldClose(window)) {
     process_input(window);
@@ -76,24 +92,24 @@ int main() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    
-    mat4 projection;
+    //mat4 projection;
     float aspect = 800.0f / 600.0f; // use your real window size
-    mat4_perspective(45.0f, aspect, 0.1f, 100.0f, projection);
+    mat4_perspective(45.0f, aspect, 0.1f, 100.0f, state.proj);
 
-    mat4 view;
+    //mat4 view;
     vec3 center;
     vec3_add(fps_pos, fps_front, center);
-    mat4_lookat(fps_pos, center, fps_up, view);
+    mat4_lookat(fps_pos, center, fps_up, state.view);
 
-    mat4 model;
-    mat4_identity(model);
-    mat4_scale(model, 10.0f, 4.0f, 10.0f);
+    mat4_identity(state.model);
+    //mat4_scale(state.model, 10.0f, 4.0f, 10.0f);
     
-    float time = (float)glfwGetTime();
+    state.time = (float)glfwGetTime();
 
-    glUseProgram(waves.shader_program);
-    set_uniforms(&waves, projection, view, model, time);
-    render_waves(&waves);
+    // render our waves
+    render_waves(&state, &waves, ripple_origin, ripple_start_time);
+
+    render_raycast(&state, &ray_thing);
  
     // finish render!
     glfwSwapBuffers(window);
@@ -107,7 +123,9 @@ int main() {
 }
 
 // on resize, simply set new bounds
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+  screen_width = width;
+  screen_height = height;
   glViewport(0, 0, width, height);
 }
 
@@ -151,20 +169,20 @@ void process_input(GLFWwindow *window) {
     }
 }
 
-void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+void mouse_callback(GLFWwindow* window, double mouse_x, double mouse_y) {
   static float sensitivity = 0.1f;
 
   if (firstMouse) {
-    lastX = xpos;
-    lastY = ypos;
+    last_mouse_x = mouse_x;
+    last_mouse_y = mouse_y;
     firstMouse = 0;
   }
 
-  float dx = xpos - lastX;
-  float dy = lastY - ypos; // reversed Y: up is positive
+  float dx = mouse_x - last_mouse_x;
+  float dy = last_mouse_y - mouse_y; // reversed Y: up is positive
 
-  lastX = xpos;
-  lastY = ypos;
+  last_mouse_x = mouse_x;
+  last_mouse_y = mouse_y;
 
   yaw   += dx * sensitivity;
   pitch += dy * sensitivity;
@@ -189,5 +207,44 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
   if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
     puts("click");
+
+    vec3 ray_origin, ray_direction;
+    vec3_copy(fps_pos, ray_origin);
+    vec3_copy(fps_front, ray_direction);
+
+    if (fabs(ray_direction[1]) > 0.0001f) {
+      float t = -ray_origin[1] / ray_direction[1];
+      if (t > 0.0f) {
+        vec3 hit_point;
+        vec3_scale(ray_direction, t, hit_point);
+        vec3_add(ray_origin, hit_point, hit_point);
+	vec3_copy(hit_point, ((raycast*)ray_thing.data)->point);
+        vec3_copy(hit_point, ripple_origin);
+        ripple_start_time = glfwGetTime();
+
+        vec3_print(ripple_origin);
+	printf("%f\n", ripple_start_time);
+      }
+    }
+    
+    /*
+    float x_ndc = (2.0f * last_mouse_x) / screen_width - 1.0f;
+    float y_ndc = 1.0f - (2.0f * last_mouse_y) / screen_height;
+
+    vec4 ray_eye = { x_ndc, y_ndc, -1.0f, 0.0f }; // directional vector
+    vec4_print(ray_eye);
+
+    // convert to world space
+    vec4 ray_world;
+    mat4_mul_vec4(inv_view, ray_eye, ray_world);
+
+    vec4 ray_dir;
+    vec4_normalize(ray_world, ray_dir);
+
+    vec3 ray_direction = { ray_dir[0], ray_dir[1], ray_dir[2] };
+    vec3_normalize(ray_direction, ray_direction);
+
+    vec3_print(ray_direction);
+    */
   }
 }

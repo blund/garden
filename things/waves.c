@@ -1,6 +1,7 @@
 #include "stdint.h"
 #include "malloc.h"
 
+
 #ifdef __EMSCRIPTEN__
   #include <GLES3/gl3.h>
 #else
@@ -9,6 +10,7 @@
 
 #include "../bl.h"
 #include "waves.h"
+#include "../state.h"
 
 void create_waves(thing *t) {
   waves *w = w = malloc(sizeof(waves));
@@ -16,7 +18,9 @@ void create_waves(thing *t) {
   t->data = w;
   t->type = THING_TYPE_WAVES;
 
-  const int n_per_side = 64;
+  const float start = -20;
+  const float end   = 20;
+  const int n_per_side = 1024;
   const int array_size = 3 * n_per_side * n_per_side;
 
   const int squares_per_side = n_per_side - 1;
@@ -29,8 +33,6 @@ void create_waves(thing *t) {
   w->points = malloc(w->n_points*sizeof(float));
   w->indices = malloc(w->n_indices*sizeof(float));
   
-  float start = -1;
-  float end   = 1;
 
   float len  = end - start;
   float step = len / (n_per_side - 1);
@@ -38,9 +40,9 @@ void create_waves(thing *t) {
   for (int x = 0; x < n_per_side; x++) {
     for (int y = 0; y < n_per_side; y++) {
       int i = 3 * (x + y*n_per_side);
-      w->points[i + 0] = -1.0f + x * step; // x
-      w->points[i + 1] = frand(0, 0.05); // y
-      w->points[i + 2] = -1.0f + y * step; // z
+      w->points[i + 0] = start + x * step; // x
+      w->points[i + 1] = 0.01; //frand(0, 0.05); // y
+      w->points[i + 2] = start + y * step; // z
     }
   }
 
@@ -88,10 +90,17 @@ void bind_waves(thing *t) {
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, w->n_indices*sizeof(uint32_t), w->indices, GL_STATIC_DRAW);
 }
 
-void render_waves(thing *t) {
-  // glDrawArrays(GL_POINTS, 0, array_size / 3);
-  //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  glBindVertexArray(t->vao);
-  glDrawElements(GL_TRIANGLES, ((waves*)t->data)->n_indices, GL_UNSIGNED_INT, 0);
+void render_waves(global_state* state, thing *thing, vec3 ripple_origin, float ripple_start_time) {
+  glUseProgram(thing->shader_program);
+
+  set_uniforms(thing, state->proj, state->view, state->model, state->time);
   
+  int ripple_origin_location = glGetUniformLocation(thing->shader_program, "u_ripple_origin");
+  glUniform3fv(ripple_origin_location, 1, ripple_origin);
+
+  int ripple_start_time_location = glGetUniformLocation(thing->shader_program, "u_ripple_start_time");
+  glUniform1f(ripple_start_time_location, ripple_start_time);
+  
+  glBindVertexArray(thing->vao);
+  glDrawElements(GL_TRIANGLES, ((waves*)thing->data)->n_indices, GL_UNSIGNED_INT, 0);
 }

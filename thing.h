@@ -8,6 +8,7 @@
 // @TODO this should be generated from the file in things..
 typedef enum {
     THING_TYPE_WAVES,
+    THING_TYPE_RAYCAST,
 } thing_type;
 
 typedef struct thing {

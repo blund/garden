@@ -4,6 +4,7 @@
 #include "stdint.h"
 
 #include "../thing.h"
+#include "../state.h"
 
 typedef struct {
   float *points;
@@ -15,6 +16,6 @@ typedef struct {
 
 void create_waves(thing*t);
 void bind_waves(thing *t);
-void render_waves(thing *t);
+void render_waves(global_state* s, thing *t, vec3 ripple_origin, float ripple_start_time);
 
 #endif
