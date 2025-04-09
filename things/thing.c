@@ -2,14 +2,9 @@
 #include "stdlib.h"
 #include "stdio.h"
 
-#ifdef __EMSCRIPTEN__
-  #include <GLES3/gl3.h>
-#else
-  #include <GL/glew.h>
-#endif
-#include <GLFW/glfw3.h>
+#include <GL/glew.h>
 
-#include "read_file.h"
+#include "../read_file.h"
 #include "thing.h"
 
 void set_uniforms(thing *t, mat4 projection, mat4 view, mat4 model, float time) {

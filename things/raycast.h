@@ -4,7 +4,7 @@
 #include "stdint.h"
 
 #include "../state.h"
-#include "../thing.h"
+#include "thing.h"
 
 typedef struct {
   vec3 point;

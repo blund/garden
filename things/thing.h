@@ -3,7 +3,7 @@
 
 #include "stdint.h"
 
-#include "linalg.h"
+#include "../linalg.h"
 
 // @TODO this should be generated from the file in things..
 typedef enum {

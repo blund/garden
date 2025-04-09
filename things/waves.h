@@ -3,7 +3,7 @@
 
 #include "stdint.h"
 
-#include "../thing.h"
+#include "thing.h"
 #include "../state.h"
 
 typedef struct {

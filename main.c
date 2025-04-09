@@ -13,7 +13,7 @@
 #define LINALG_IMPL
 #include "linalg.h"
 
-#include "thing.h"
+#include "things/thing.h"
 #include "things/land.h"
 #include "things/light.h"
 #include "things/waves.h"
@@ -97,7 +97,7 @@ int main() {
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
   thing waves;
-  compile_shader(&waves, "shaders/triangle.vs", "shaders/triangle.fs");
+  compile_shader(&waves, "shaders/waves.vs", "shaders/waves.fs");
   create_waves(&waves);
 
   thing land;
