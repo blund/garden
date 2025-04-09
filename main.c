@@ -14,6 +14,7 @@
 #include "linalg.h"
 
 #include "thing.h"
+#include "things/land.h"
 #include "things/waves.h"
 #include "things/raycast.h"
 
@@ -40,9 +41,19 @@ float pitch = 0.0f; // up/down
 int firstMouse = 1;
 
 thing ray_thing;
+typedef struct {
+  float start_time;
+  vec3  origin;
+} ripple;
 
-float ripple_start_time = 0;
-vec3 ripple_origin;
+typedef struct {
+  int index;
+  int size;
+  ripple ripples[8];
+} ripple_controller;
+
+ripple_controller rc = {0,8};
+
 
 global_state state;
 
@@ -53,6 +64,9 @@ int main() {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+  glfwWindowHint(GLFW_SAMPLES, 4);
+  glEnable(GL_MULTISAMPLE);  
+ 
   // set up window
   GLFWwindow* window = glfwCreateWindow(screen_width, screen_height, "Welcome to the Garden", NULL, NULL);
   if (window == NULL) {
@@ -70,7 +84,10 @@ int main() {
   
   // set initial viewport
   glViewport(0, 0, 800, 600);
+
   glEnable(GL_DEPTH_TEST);
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_BACK);
 
   // set framebuffer resize callback :)
   glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -81,6 +98,10 @@ int main() {
   thing waves;
   compile_shader(&waves, "shaders/triangle.vs", "shaders/triangle.fs");
   create_waves(&waves);
+
+  thing land;
+  compile_shader(&land, "shaders/land.vs", "shaders/land.fs");
+  create_land(&land);
 
   compile_shader(&ray_thing, "shaders/raycast.vs", "shaders/raycast.fs");
   create_raycast(&ray_thing);
@@ -106,8 +127,9 @@ int main() {
     
     state.time = (float)glfwGetTime();
 
+    render_land(&state, &land);
     // render our waves
-    render_waves(&state, &waves, ripple_origin, ripple_start_time);
+    render_waves(&state, &waves, rc.ripples[0].origin, rc.ripples[0].start_time);
 
     render_raycast(&state, &ray_thing);
  
@@ -219,11 +241,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         vec3_scale(ray_direction, t, hit_point);
         vec3_add(ray_origin, hit_point, hit_point);
 	vec3_copy(hit_point, ((raycast*)ray_thing.data)->point);
-        vec3_copy(hit_point, ripple_origin);
-        ripple_start_time = glfwGetTime();
+        vec3_copy(hit_point, rc.ripples[0].origin);
+        rc.ripples[0].start_time = glfwGetTime();
 
-        vec3_print(ripple_origin);
-	printf("%f\n", ripple_start_time);
+        vec3_print(rc.ripples[0].origin);
+	printf("%f\n", rc.ripples[0].start_time);
       }
     }
     
