@@ -10,9 +10,9 @@ typedef struct {
   float *points;
   uint32_t *indices;
 
-  int n_points;
-  int n_indices;
-} waves;
+  uint32_t n_points;
+  uint32_t n_indices;
+} waves_t;
 
 void create_waves(thing*t);
 void bind_waves(thing *t);

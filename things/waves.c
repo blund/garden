@@ -13,14 +13,14 @@
 #include "../state.h"
 
 void create_waves(thing *t) {
-  waves *w = w = malloc(sizeof(waves));
+  waves_t *w = w = malloc(sizeof(waves_t));
 
   t->data = w;
   t->type = THING_TYPE_WAVES;
 
-  const float start = -20;
-  const float end   = 20;
-  const int n_per_side = 1024;
+  const float start = -30;
+  const float end   = 30;
+  const int n_per_side = 2*1024;
   const int array_size = 3 * n_per_side * n_per_side;
 
   const int squares_per_side = n_per_side - 1;
@@ -32,7 +32,6 @@ void create_waves(thing *t) {
 
   w->points = malloc(w->n_points*sizeof(float));
   w->indices = malloc(w->n_indices*sizeof(float));
-  
 
   float len  = end - start;
   float step = len / (n_per_side - 1);
@@ -71,7 +70,7 @@ void create_waves(thing *t) {
 }
 
 void bind_waves(thing *t) {
-  waves* w = (waves*)t->data;
+  waves_t* w = (waves_t*)t->data;
 
   // Set up VAO for thing
   glGenVertexArrays(1, &t->vao);
@@ -102,5 +101,5 @@ void render_waves(global_state* state, thing *thing, vec3 ripple_origin, float r
   glUniform1f(ripple_start_time_location, ripple_start_time);
   
   glBindVertexArray(thing->vao);
-  glDrawElements(GL_TRIANGLES, ((waves*)thing->data)->n_indices, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, ((waves_t*)thing->data)->n_indices, GL_UNSIGNED_INT, 0);
 }
