@@ -29,7 +29,7 @@ void process_input(GLFWwindow *window);
 int screen_width = 800;
 int screen_height = 600;
 
-vec3 fps_pos = {0.0f, 0.8f, 0.0f}; // 1 unit above ground
+vec3 fps_pos = {0.0f, 0.8f, -1.0f}; // 1 unit above ground
 vec3 fps_front = {0.0f, 0.0f, -1.0f}; // looking forward on Z
 vec3 fps_up = {0.0f, 1.0f, 0.0f};     // global up direction
 
