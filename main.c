@@ -15,6 +15,7 @@
 
 #include "thing.h"
 #include "things/land.h"
+#include "things/light.h"
 #include "things/waves.h"
 #include "things/raycast.h"
 
@@ -28,7 +29,7 @@ void process_input(GLFWwindow *window);
 int screen_width = 800;
 int screen_height = 600;
 
-vec3 fps_pos = {0.0f, 0.8f, 10.0f}; // 1 unit above ground
+vec3 fps_pos = {0.0f, 0.8f, 0.0f}; // 1 unit above ground
 vec3 fps_front = {0.0f, 0.0f, -1.0f}; // looking forward on Z
 vec3 fps_up = {0.0f, 1.0f, 0.0f};     // global up direction
 
@@ -103,6 +104,10 @@ int main() {
   compile_shader(&land, "shaders/land.vs", "shaders/land.fs");
   create_land(&land);
 
+  thing light;
+  compile_shader(&light, "shaders/light.vs", "shaders/light.fs");
+  create_light(&light);
+
   compile_shader(&ray_thing, "shaders/raycast.vs", "shaders/raycast.fs");
   create_raycast(&ray_thing);
 
@@ -127,10 +132,10 @@ int main() {
     
     state.time = (float)glfwGetTime();
 
+    render_light(&state, &light);
     render_land(&state, &land);
-    // render our waves
-    render_waves(&state, &waves, rc.ripples[0].origin, rc.ripples[0].start_time);
-
+    render_waves(&state, &waves, rc.ripples[0].origin,
+                 rc.ripples[0].start_time);
     render_raycast(&state, &ray_thing);
  
     // finish render!

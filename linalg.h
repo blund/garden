@@ -26,6 +26,7 @@ void mat4_print(mat4 m);
 void mat4_mul_vec4(const mat4 m, const vec4 v, vec4 out);
 void mat4_scale(mat4 m, float sx, float sy, float sz);
 void mat4_inverse(mat4 out, const mat4 m);
+void mat4_translate(mat4 out, vec3 v);
 
 
 #ifdef LINALG_IMPL
@@ -316,6 +317,18 @@ void mat4_inverse(mat4 out, const mat4 m) {
     // Copy result back into out (row-major layout)
     for (int i = 0; i < 16; i++)
         ((float*)out)[i] = inv[i] * det;
+}
+
+void mat4_translate(mat4 out, vec3 v) {
+    // Identity matrix
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            out[i][j] = (i == j) ? 1.0f : 0.0f;
+
+    // Set translation column
+    out[3][0] = v[0];
+    out[3][1] = v[1];
+    out[3][2] = v[2];
 }
 
 

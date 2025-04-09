@@ -7,8 +7,9 @@
 
 // @TODO this should be generated from the file in things..
 typedef enum {
-    THING_TYPE_WAVES,
     THING_TYPE_LAND,
+    THING_TYPE_LIGHT,
+    THING_TYPE_WAVES,
     THING_TYPE_RAYCAST,
 } thing_type;
 

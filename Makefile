@@ -1,7 +1,6 @@
 
-
 run:
-	gcc main.c thing.c things/waves.c things/raycast.c things/land.c \
+	gcc main.c thing.c things/waves.c things/raycast.c things/land.c things/light.c \
 		-g -Wall \
 		-Iinclude \
 		-lGL -lGLEW -lglfw -lX11 -lpthread -lXrandr -lXi -ldl -lm
