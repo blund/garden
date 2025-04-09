@@ -92,6 +92,7 @@ void bind_waves(thing *t) {
 void render_waves(global_state* state, thing *thing, vec3 ripple_origin, float ripple_start_time) {
   glUseProgram(thing->shader_program);
 
+  mat4_identity(state->model); // move cube right and into the scene
   set_uniforms(thing, state->proj, state->view, state->model, state->time);
   
   int ripple_origin_location = glGetUniformLocation(thing->shader_program, "u_ripple_origin");

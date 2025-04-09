@@ -124,6 +124,7 @@ void bind_land(thing *t) {
 void render_land(global_state* state, thing *thing) {
   glUseProgram(thing->shader_program);
 
+  mat4_identity(state->model); // move cube right and into the scene
   set_uniforms(thing, state->proj, state->view, state->model, state->time);
   
   glBindVertexArray(thing->vao);
