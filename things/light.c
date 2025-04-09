@@ -14,7 +14,7 @@ void create_light(thing *t) {
   t->type = THING_TYPE_LIGHT;
 
   light->pos[0] = 0;
-  light->pos[1] = 3;
+  light->pos[1] = 5;
   light->pos[2] = -40;
   
   // Position      // Normals
