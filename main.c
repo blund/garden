@@ -116,7 +116,7 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    
     //mat4 projection;
-    float aspect = 800.0f / 600.0f; // use your real window size
+    float aspect = (float)screen_width / screen_height; // use your real window size
     mat4_perspective(45.0f, aspect, 0.1f, 100.0f, state.proj);
 
     //mat4 view;
