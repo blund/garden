@@ -4,7 +4,7 @@
 
 #include <GL/glew.h>
 
-#include "../bl.h"
+#include "bl.h"
 #include "thing.h"
 
 void set_uniforms(thing *t, mat4 projection, mat4 view, mat4 model, float time) {

@@ -3,9 +3,7 @@
 
 #include <GL/glew.h>
 
-#include "../bl.h"
 #include "waves.h"
-#include "../state.h"
 
 void create_waves(thing *t) {
   waves_t *w = w = malloc(sizeof(waves_t));

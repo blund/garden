@@ -3,8 +3,8 @@
 
 #include "stdint.h"
 
+#include "state.h"
 #include "thing.h"
-#include "../state.h"
 
 typedef struct {
   float *points;

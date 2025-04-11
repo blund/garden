@@ -3,7 +3,6 @@
 
 #include <GL/glew.h>
 
-#include "../bl.h"
 #include "raycast.h"
 
 void create_raycast(thing *t) {

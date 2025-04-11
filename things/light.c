@@ -4,7 +4,6 @@
 
 #include <GL/glew.h>
 
-#include "../bl.h"
 #include "light.h"
 
 void create_light(thing *t) {

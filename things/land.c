@@ -1,14 +1,10 @@
 #include "stdint.h"
 #include "malloc.h"
+#include "math.h"
 
 #include <GL/glew.h>
 
-#include "string.h"
-#include "math.h"
-
-#include "../bl.h"
 #include "land.h"
-#include "../state.h"
 
 void create_land(thing *t) {
   land_t *land = land = malloc(sizeof(land_t));
