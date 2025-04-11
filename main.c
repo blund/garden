@@ -7,9 +7,6 @@
 #define BL_IMPL
 #include "bl.h"
 
-#define READFILE_IMPL
-#include "read_file.h"
-
 #define LINALG_IMPL
 #include "linalg.h"
 
