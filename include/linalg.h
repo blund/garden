@@ -99,9 +99,7 @@ float vec3_dot(const vec3 a, const vec3 b) {
 
 
 void vec3_copy(const vec3 v, vec3 out) {
-  out[0] = v[0];
-  out[1] = v[1];
-  out[2] = v[2];
+  memcpy(out, v, sizeof(vec3));
 }
 
 void vec3_scale(const vec3 v, float s, vec3 out) {
